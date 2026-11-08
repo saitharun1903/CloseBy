@@ -74,7 +74,8 @@ Both are optional; the app works without them and explains what's missing.
 **Shared browser (Hyperbeam):**
 1. Sign up at hyperbeam.com and create an API key in the dashboard.
 2. Add `HYPERBEAM_API_KEY` (and `HYPERBEAM_REGION=AS` for India/Asia) to Vercel, then redeploy.
-3. Cost guards built into the app: a session starts only when someone clicks; one per room (Hyperbeam `tag`); it ends after 2 min with nobody connected, after 15 min idle, after 4 h at most, and when the room ends; starting a synced video closes it. Hyperbeam bills per participant-minute after its free monthly allowance — check their current pricing.
+3. Cost guards built into the app: a session starts only when someone clicks; one per room (Hyperbeam `tag`); it ends after 2 min with nobody connected, after 3 h with no clicks or typing (a whole film counts as idle, so this is generous), after 4 h at most, and when the room ends; starting a synced video closes it. Everyone gets a warning a minute before it closes.
+4. The red **YouTube** button opens the real youtube.com in the shared browser, so you can sign in with your Google account (Premium, playlists, subscriptions). Tick “Keep me signed in” to save the browser profile on that device (a Hyperbeam saved profile). Google occasionally challenges sign-ins from cloud browsers — if it refuses, the built-in YouTube (Watch → YouTube) still works without signing in. Hyperbeam bills per participant-minute after its free monthly allowance — check their current pricing.
 
 ### 8. After launch
 - Create a room at https://closeby.tech, open the invite on your phone over mobile data, and make sure the call connects.

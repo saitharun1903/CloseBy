@@ -9,17 +9,20 @@ import { AppError } from "./errors";
 export interface BrowserSession {
   sessionId: string;
   embedUrl: string;
+  /** Saved-profile id (sign-ins, cookies) when one was requested. */
+  profileId?: string;
 }
 
 export interface BrowserProvider {
-  start(opts: { roomId: string; startUrl: string; region: "NA" | "EU" | "AS" }): Promise<BrowserSession>;
+  start(opts: { roomId: string; startUrl: string; region: "NA" | "EU" | "AS"; profile?: "new" | string }): Promise<BrowserSession>;
   stop(sessionId: string): Promise<void>;
 }
 
 /** Cost/abuse guards, in seconds. */
 export const BROWSER_TIMEOUTS = {
   offline: 120, // nobody connected for 2 min → ends
-  inactive: 15 * 60, // no input for 15 min → ends
+  // Counts only clicks/keys — a full movie has none, so this must outlast one.
+  inactive: 3 * 3600,
   absolute: 4 * 3600, // hard cap per session
   warning: 60,
 };
@@ -28,7 +31,7 @@ export function createHyperbeamProvider(apiKey: string, f: typeof fetch = fetch)
   const base = "https://engine.hyperbeam.com/v0/vm";
   const headers = { authorization: `Bearer ${apiKey}`, "content-type": "application/json" };
   return {
-    async start({ roomId, startUrl, region }) {
+    async start({ roomId, startUrl, region, profile }) {
       let res: Response;
       try {
         res = await f(base, {
@@ -48,6 +51,8 @@ export function createHyperbeamProvider(apiKey: string, f: typeof fetch = fetch)
             width: 1280,
             height: 720,
             quality: { mode: "smooth" },
+            // Saved profile keeps Google/YouTube sign-ins between sessions.
+            ...(profile ? { profile: profile === "new" ? true : profile } : {}),
           }),
         });
       } catch {
@@ -63,7 +68,7 @@ export function createHyperbeamProvider(apiKey: string, f: typeof fetch = fetch)
       if (!j.session_id || !j.embed_url || !/^https:\/\/[a-z0-9-]+\.hyperbeam\.com\//.test(j.embed_url)) {
         throw new AppError("media_unavailable", "The shared browser returned an unexpected response.");
       }
-      return { sessionId: j.session_id, embedUrl: j.embed_url };
+      return { sessionId: j.session_id, embedUrl: j.embed_url, profileId: profile ? (profile === "new" ? j.session_id : profile) : undefined };
     },
     async stop(sessionId) {
       try {

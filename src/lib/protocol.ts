@@ -63,7 +63,11 @@ export const addQueueItemBody = z.discriminatedUnion("kind", [
   }),
 ]);
 
-export const startBrowserBody = z.object({ startUrl: httpUrlSchema.optional() });
+export const startBrowserBody = z.object({
+  startUrl: httpUrlSchema.optional(),
+  /** "new" saves a fresh profile; an id loads (and updates) a saved one. */
+  profile: z.union([z.literal("new"), z.string().regex(/^[A-Za-z0-9_-]{8,64}$/)]).optional(),
+});
 
 export const reorderQueueBody = z.object({ orderedIds: z.array(z.string().uuid()).max(200) });
 

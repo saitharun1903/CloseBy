@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useController } from "./context";
 import { useRoom } from "./store";
+import { toast } from "@/components/toaster";
 
 type HB = { volume: number; destroy(): void };
 
@@ -55,6 +56,13 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
             );
             void c.refreshState();
           },
+          onCloseWarning: (e) => {
+            if (cancelled) return;
+            toast({
+              title: "The shared browser is about to close",
+              body: e.type === "absolute" ? "It has reached its time limit." : "Click or type inside it to keep it open.",
+            });
+          },
           onConnectionStateChange: (e) => {
             if (cancelled) return;
             if (e.state === "playing") setStatus("ready");
@@ -93,7 +101,8 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
         <div className="flex h-11 shrink-0 items-center gap-2 px-4 text-[13px] text-paper-dim">
           <Globe className="size-4 text-lamp" />
           <span className="truncate">
-            Shared browser · {isMe ? "you started it" : `started by ${startedBy ?? "your partner"}`} · you can both click and type
+            Shared browser · {isMe ? "you started it" : `started by ${startedBy ?? "your partner"}`}
+            <span className="max-md:hidden"> · you can both click and type · sign in with Google inside it</span>
           </span>
           <Button size="sm" variant="secondary" className="ml-auto" onClick={() => void c.stopBrowser().catch((e) => c.handleApiError(e, "Couldn’t close the browser"))} data-testid="browser-stop">
             <Power /> Close for both

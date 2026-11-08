@@ -142,10 +142,10 @@ export function isNewer(incoming: PlaybackState, current: PlaybackState | null):
 
 /* ───────────────────────────── Drift control ───────────────────────────── */
 
-export const DRIFT_DEADBAND_SEC = 0.1;
+export const DRIFT_DEADBAND_SEC = 0.08;
 export const DRIFT_RELEASE_SEC = 0.04;
 export const DRIFT_HARD_SEEK_SEC = 1.0;
-export const MAX_NUDGE = 0.06; // ±6% playback rate
+export const MAX_NUDGE = 0.1; // ±10% playback rate (pitch is preserved by the browser)
 
 export type Correction =
   | { kind: "none"; rate: number }
@@ -155,7 +155,7 @@ export type Correction =
 /**
  * Decide how to steer the local player.
  *  - small drift: do nothing (avoids audible rate wobble)
- *  - medium drift: nudge playbackRate by up to ±6% until converged
+ *  - medium drift: nudge playbackRate by up to ±10% until converged
  *  - large drift: hard seek
  * `wasNudging` adds hysteresis so we keep correcting down to a tighter band.
  */
@@ -179,8 +179,8 @@ export function computeCorrection(args: {
   const threshold = wasNudging ? DRIFT_RELEASE_SEC : DRIFT_DEADBAND_SEC;
   if (abs <= threshold) return { kind: "none", rate: nominalRate };
 
-  // Proportional controller: correct ~35% of the error per second, capped.
-  const adjust = Math.max(-MAX_NUDGE, Math.min(MAX_NUDGE, drift * 0.35));
+  // Proportional controller: correct ~60% of the error per second, capped.
+  const adjust = Math.max(-MAX_NUDGE, Math.min(MAX_NUDGE, drift * 0.6));
   return { kind: "nudge", rate: nominalRate * (1 - adjust), driftSec: drift };
 }
 

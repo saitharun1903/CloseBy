@@ -116,10 +116,9 @@ export async function createRoom(d: RoomDeps, input: { displayName: string; pin?
     return host!;
   });
 
-  // Best effort: the LiveKit room is also auto-created on first connect.
-  await d.gateway.ensureRoom(roomId, 2, d.ttlHours * 3600).catch((e) => console.warn("[livekit] ensureRoom:", e?.message ?? e));
-
   return {
+    // Best effort, run after the response: the LiveKit room is also auto-created on first connect.
+    ensure: () => d.gateway.ensureRoom(roomId, 2, d.ttlHours * 3600),
     roomId,
     inviteToken,
     inviteUrl: inviteUrlFor(d.appUrl, roomId, inviteToken),
@@ -260,7 +259,6 @@ export async function issueMediaToken(d: RoomDeps, claims: SessionClaims | null,
   await d.db.update(participants).set({ lastSeenAt: new Date(nowMs) }).where(eq(participants.id, me.id));
   // Short TTL: only used to connect; LiveKit refreshes tokens for live sessions.
   const ttlSec = Math.max(60, Math.min(15 * 60, Math.floor((room.expiresAt.getTime() - nowMs) / 1000)));
-  await d.gateway.ensureRoom(roomId, room.maxParticipants, Math.floor((room.expiresAt.getTime() - nowMs) / 1000)).catch(() => {});
   const token = await d.gateway.issueToken({
     roomId,
     identity: me.id,
@@ -268,7 +266,7 @@ export async function issueMediaToken(d: RoomDeps, claims: SessionClaims | null,
     metadata: JSON.stringify({ role: me.role, hue: me.avatarHue }),
     ttlSec,
   });
-  return { token, identity: me.id };
+  return { token, identity: me.id, ensure: () => d.gateway.ensureRoom(roomId, room.maxParticipants, Math.floor((room.expiresAt.getTime() - nowMs) / 1000)) };
 }
 
 export async function touch(d: RoomDeps, participantId: string) {
@@ -501,13 +499,13 @@ export function browserState(room: Room): BrowserStateDTO {
  * Start (or join) the room's shared browser. Starting it stops any synced
  * video so there's one thing on screen — and one bill — at a time.
  */
-export async function startBrowser(d: RoomDeps, claims: SessionClaims | null, roomId: string, startUrl?: string) {
+export async function startBrowser(d: RoomDeps, claims: SessionClaims | null, roomId: string, startUrl?: string, profile?: string) {
   const { room, me } = await authorize(d, claims, roomId);
   if (!d.browser) throw new AppError("media_unavailable", "The shared browser isn’t enabled on this server.");
   if (room.browserSessionId && room.browserEmbedEnc) {
-    return { embedUrl: decryptString(room.browserEmbedEnc, d.secret), browser: browserState(room) };
+    return { embedUrl: decryptString(room.browserEmbedEnc, d.secret), browser: browserState(room), profileId: null as string | null };
   }
-  const session = await d.browser.start({ roomId, startUrl: startUrl ?? "https://www.youtube.com", region: d.browserRegion ?? "AS" });
+  const session = await d.browser.start({ roomId, startUrl: startUrl ?? "https://www.youtube.com", region: d.browserRegion ?? "AS", profile });
   const nowMs = clock(d);
   const [updated] = await d.db
     .update(rooms)
@@ -526,7 +524,7 @@ export async function startBrowser(d: RoomDeps, claims: SessionClaims | null, ro
     await submitPlaybackIntent(d, claims, roomId, { baseVersion: pb.version, intent: { type: "load", mediaId: null } }).catch(() => {});
   }
   await d.gateway.broadcast(roomId, { kind: "browser", browser: state });
-  return { embedUrl: session.embedUrl, browser: state };
+  return { embedUrl: session.embedUrl, browser: state, profileId: session.profileId ?? null };
 }
 
 /** The embed URL is a bearer credential: only handed to authorized members, never broadcast. */

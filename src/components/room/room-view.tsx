@@ -219,8 +219,9 @@ function Stage({ partner, partnerName, chromeHidden }: { partner?: Participant; 
     if (present && k !== main) minis.push(k);
   }
 
-  // YouTube forbids anything on top of its player: give cameras their own rail.
-  const railed = main === "media" && isYouTube && layout !== "compact";
+  // YouTube forbids anything on top of its player, and cameras floating over a
+  // browser you click and scroll in get in the way: give cameras their own rail.
+  const railed = ((main === "media" && isYouTube) || main === "browser") && layout !== "compact";
   const railBelow = railed && small;
 
   const slot = (what: Content) => {
@@ -249,7 +250,7 @@ function Stage({ partner, partnerName, chromeHidden }: { partner?: Participant; 
         </div>
       )}
       {browserOn && (
-        <div className={slot("browser")} style={main === "browser" ? { top: TOP_BAND, bottom: BOTTOM_BAND - 8 } : miniBottom}>
+        <div className={slot("browser")} style={main === "browser" ? (railed || layout === "compact" ? undefined : { top: TOP_BAND, bottom: BOTTOM_BAND - 8 }) : miniBottom}>
           <SharedBrowser mode={main === "browser" ? "main" : "mini"} />
         </div>
       )}
