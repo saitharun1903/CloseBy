@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, enterRoom, FILM, FILM_URL, inviteUrl, joinAsGuest, loadFilmForBoth, newPerson, pair, videoState } from "./helpers";
+import { createRoom, drift, enterRoom, FILM, FILM_URL, inviteUrl, joinAsGuest, loadFilmForBoth, newPerson, pair, videoState } from "./helpers";
+
+/** Both players within `tol` of the server trajectory, measured in-page (no cross-page skew). */
+async function bothInSync(a: Page, b: Page, tol: number) {
+  const [x, y] = await Promise.all([drift(a), drift(b)]);
+  return Math.abs(x.drift) < tol && Math.abs(y.drift) < tol;
+}
 
 async function gap(a: Page, b: Page) {
   const [x, y] = await Promise.all([videoState(a), videoState(b)]);
@@ -19,10 +25,10 @@ test.describe("synchronised playback", () => {
     await host.page.waitForTimeout(3000);
     expect((await videoState(host.page)).t).toBeGreaterThan(2);
     // Converges quickly, then holds: sample the gap repeatedly over 3 seconds.
-    await expect.poll(() => gap(host.page, guest.page), { timeout: 8000 }).toBeLessThan(0.35);
+    await expect.poll(() => bothInSync(host.page, guest.page, 0.2), { timeout: 8000 }).toBe(true);
     for (let i = 0; i < 6; i++) {
       await host.page.waitForTimeout(500);
-      expect(await gap(host.page, guest.page)).toBeLessThan(0.35);
+      expect(await bothInSync(host.page, guest.page, 0.2)).toBe(true);
     }
 
     // Guest pauses: host pauses at (nearly) the same frame.
@@ -46,8 +52,11 @@ test.describe("synchronised playback", () => {
     await host.page.getByTestId("play-toggle").click();
     await expect.poll(async () => (await videoState(guest.page)).paused).toBe(false);
     await expect.poll(async () => (await videoState(guest.page)).rate, { timeout: 10_000 }).toBeGreaterThan(1.4);
-    await guest.page.waitForTimeout(3000);
-    expect(await gap(host.page, guest.page)).toBeLessThan(0.4);
+    await expect.poll(() => bothInSync(host.page, guest.page, 0.2), { timeout: 10_000 }).toBe(true);
+    for (let i = 0; i < 6; i++) {
+      await host.page.waitForTimeout(500);
+      expect(await bothInSync(host.page, guest.page, 0.2)).toBe(true);
+    }
   });
 
   test("drift is corrected: a small drift is nudged, a large one is re-seeked", async ({ browser }) => {

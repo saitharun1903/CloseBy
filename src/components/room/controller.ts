@@ -89,7 +89,7 @@ export class RoomController {
 
   async start() {
     // Test-only handle so E2E tests can inspect real WebRTC stats. Never set in production builds.
-    if (process.env.NEXT_PUBLIC_E2E === "1") (window as unknown as { __cb?: RoomController }).__cb = this;
+    if (process.env.NEXT_PUBLIC_E2E === "1") Object.assign(window, { __cb: this, __cbStore: useRoom });
     this.wire(this.room);
     void this.syncClock();
     this.clockTimer = setInterval(() => void this.syncClock(), 60_000);

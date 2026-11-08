@@ -100,3 +100,18 @@ export async function loadFilmForBoth(host: Page, guest: Page) {
   for (const p of [host, guest]) await expect.poll(async () => (await videoState(p)).ready).toBeGreaterThanOrEqual(1);
   await host.getByTestId("ctl-queue").click(); // close panel
 }
+
+/**
+ * Local player position minus where the server trajectory says it should be,
+ * computed in-page at a single instant (no cross-page timing skew).
+ */
+export async function drift(page: Page) {
+  return page.evaluate(() => {
+    const store = (window as unknown as { __cbStore: { getState(): { playback: { status: string; positionSec: number; rate: number; updatedAtMs: number }; clockOffsetMs: number } } }).__cbStore.getState();
+    const v = document.querySelector("[data-testid=player-video]") as HTMLVideoElement;
+    const pb = store.playback;
+    const now = Date.now() + store.clockOffsetMs;
+    const expected = pb.status === "playing" ? pb.positionSec + ((now - pb.updatedAtMs) / 1000) * pb.rate : pb.positionSec;
+    return { drift: v.currentTime - expected, rate: v.playbackRate, nominal: pb.rate, buffering: v.readyState < 3 };
+  });
+}
