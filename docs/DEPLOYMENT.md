@@ -2,7 +2,7 @@
 
 ## Step-by-step: closeby.tech (Vercel + Neon + LiveKit Cloud + Upstash)
 
-This is the recommended path: every piece has a free tier, TLS and TURN are handled for you, and nothing needs a server you maintain. Pick regions close to your users (Mumbai `ap-south-1` / Vercel `bom1` for India).
+This is the recommended path: every piece has a free tier, TLS and TURN are handled for you, and nothing needs a server you maintain. Keep the app, database and Redis in the **same region**, close to your users. For India that's **Singapore** (`ap-southeast-1`, Vercel `sin1`) — Neon and Upstash don't offer Mumbai.
 
 ### 1. Accounts
 Vercel (sign in with GitHub), Neon (Postgres), LiveKit Cloud, Upstash (Redis). Vercel's free Hobby plan is for personal, non-commercial projects.
@@ -12,32 +12,32 @@ Vercel (sign in with GitHub), Neon (Postgres), LiveKit Cloud, Upstash (Redis). V
 2. **Settings → Keys → Create key.** Save the **API key**, **API secret** and **WebSocket URL** (`wss://<project>.livekit.cloud`).
 
 ### 3. Database (Neon)
-1. New project, region **AWS ap-south-1 (Mumbai)**.
+1. New project, region **AWS ap-southeast-1 (Singapore)**.
 2. Copy both connection strings: the **pooled** one (host contains `-pooler`) for the app, and the **direct** one for migrations. Keep `?sslmode=require`.
-3. Apply the schema from your machine using the **direct** URL:
-   ```bash
-   DATABASE_URL="postgres://…direct-host…/neondb?sslmode=require" npm run db:migrate
-   ```
+3. Nothing to run by hand: every Vercel build runs `npm run db:migrate` first (the `vercel-build` script), using `DIRECT_URL` if set, otherwise `DATABASE_URL`. Already-applied migrations are skipped. Add both URLs to Vercel (see step 5).
 
 ### 4. Redis (Upstash, recommended)
-Create a Redis database in **ap-south-1** and copy the `rediss://…` URL. On Vercel your app runs on many short-lived instances, so in-memory rate limits wouldn't be shared without it.
+Create a Redis database in **ap-southeast-1 (Singapore)** and copy the `rediss://…` URL. On Vercel your app runs on many short-lived instances, so in-memory rate limits wouldn't be shared without it.
 
 ### 5. Vercel project (deploy on the vercel.app URL first)
 1. **Add New → Project → import `saitharun1903/CloseBy`.** Framework: Next.js (auto-detected). The production branch is `main`, so merge the work into `main` first.
-2. **Settings → Functions → Region:** `bom1` (next to the database).
+2. **Settings → Functions → Region:** `sin1` (Singapore, next to the database).
 3. **Settings → Environment Variables** (Production and Preview):
 
    | Name | Value |
    | --- | --- |
    | `APP_URL` | `https://<project>.vercel.app` for now; switched to `https://closeby.tech` in step 7 |
    | `SESSION_SECRET` | output of `openssl rand -base64 48` |
-   | `DATABASE_URL` | the Neon pooled URL |
+   | `DATABASE_URL` | the Neon pooled URL (host contains `-pooler`) |
+   | `DIRECT_URL` | the Neon direct URL (used only for migrations during the build) |
    | `REDIS_URL` | the Upstash `rediss://` URL |
    | `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | from step 2 |
    | `LIVEKIT_API_URL` | `https://<project>.livekit.cloud` |
    | `NEXT_PUBLIC_LIVEKIT_URL` | `wss://<project>.livekit.cloud` |
    | `CRON_SECRET` | output of `openssl rand -hex 24` |
    | `ROOM_TTL_HOURS` | `12` (optional) |
+   | `YOUTUBE_API_KEY` | optional — enables YouTube search (see 7b) |
+   | `HYPERBEAM_API_KEY`, `HYPERBEAM_REGION` | optional — enables the shared browser (see 7b) |
 
    `NEXT_PUBLIC_LIVEKIT_URL` is baked into the build (it shapes the CSP), so **redeploy after changing it**.
 4. **Deploy.** `vercel.json` registers a daily cleanup cron; Vercel sends `Authorization: Bearer $CRON_SECRET` to `GET /api/cron/cleanup` automatically. Expired rooms are also purged whenever a new room is created.
@@ -61,6 +61,19 @@ Create a Redis database in **ap-south-1** and copy the `rediss://…` URL. On Ve
 4. Wait until Vercel shows **Valid Configuration** (minutes to a few hours). The HTTPS certificate is issued automatically.
 5. Change `APP_URL` to `https://closeby.tech` and **redeploy**, so invite links use the real domain.
 6. Optional: in LiveKit Cloud **Settings → Webhooks**, add `https://closeby.tech/api/livekit/webhook` (signed with your API key) so abandoned guest seats free up faster.
+
+### 7b. Optional: YouTube search and the shared browser
+Both are optional; the app works without them and explains what's missing.
+
+**YouTube search** (pasting links works without this):
+1. console.cloud.google.com → create a project → **APIs & Services → Library → "YouTube Data API v3" → Enable**.
+2. **Credentials → Create credentials → API key**. Restrict it: *API restrictions → YouTube Data API v3*.
+3. Add it to Vercel as `YOUTUBE_API_KEY` and redeploy. The free quota (10,000 units/day) allows about 100 searches a day; each search costs 100 units.
+
+**Shared browser (Hyperbeam):**
+1. Sign up at hyperbeam.com and create an API key in the dashboard.
+2. Add `HYPERBEAM_API_KEY` (and `HYPERBEAM_REGION=AS` for India/Asia) to Vercel, then redeploy.
+3. Cost guards built into the app: a session starts only when someone clicks; one per room (Hyperbeam `tag`); it ends after 2 min with nobody connected, after 15 min idle, after 4 h at most, and when the room ends; starting a synced video closes it. Hyperbeam bills per participant-minute after its free monthly allowance — check their current pricing.
 
 ### 8. After launch
 - Create a room at https://closeby.tech, open the invite on your phone over mobile data, and make sure the call connects.

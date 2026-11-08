@@ -13,10 +13,10 @@ export function Tooltip({ label, children, side = "top", shortcut }: { label: Re
           side={side}
           sideOffset={8}
           collisionPadding={8}
-          className="z-[60] flex items-center gap-2 rounded-sm bg-paper px-2 py-1 text-[12px] font-medium text-ink-950 shadow-float data-[state=delayed-open]:animate-fade-in"
+          className="z-[60] flex items-center gap-2 rounded-md bg-ink-750/95 px-2.5 py-1.5 text-[12px] font-medium text-paper shadow-float backdrop-blur data-[state=delayed-open]:animate-fade-in"
         >
           {label}
-          {shortcut && <kbd className="rounded-xs bg-ink-950/10 px-1 font-mono text-[11px] text-ink-950/70">{shortcut}</kbd>}
+          {shortcut && <kbd className="rounded-xs bg-white/10 px-1 font-mono text-[11px] text-paper-dim">{shortcut}</kbd>}
         </T.Content>
       </T.Portal>
     </T.Root>

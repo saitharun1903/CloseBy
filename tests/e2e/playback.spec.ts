@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeEveryone, createRoom, drift, enterRoom, FILM, FILM_URL, inviteUrl, joinAsGuest, loadFilmForBoth, newPerson, pair, videoState } from "./helpers";
+import { closeEveryone, createRoom, drift, enterRoom, FILM, FILM_URL, inviteUrl, joinAsGuest, loadFilmForBoth, newPerson, openWatch, pair, videoState } from "./helpers";
 
 /** Both players within `tol` of the server trajectory, measured in-page (no cross-page skew). */
 async function bothInSync(a: Page, b: Page, tol: number) {
@@ -84,9 +84,8 @@ test.describe("synchronised playback", () => {
     await createRoom(host.page);
     await enterRoom(host.page);
     const url = await inviteUrl(host.page);
-    await host.page.getByTestId("ctl-queue").click();
+    await openWatch(host.page, "files");
     await host.page.getByTestId("queue-file").setInputFiles(FILM);
-    await host.page.getByTestId("ctl-queue").click();
     await host.page.getByTestId("play-toggle").click();
     await host.page.waitForTimeout(5000);
 
@@ -106,7 +105,7 @@ test.describe("synchronised playback", () => {
     await guest.page.getByTestId("media-mute").click();
     expect((await videoState(guest.page)).muted).toBe(true);
     expect((await videoState(host.page)).muted).toBe(false);
-    await expect(guest.page.getByTestId("ctl-mic")).toHaveAccessibleName("Mute microphone");
+    await expect(guest.page.getByTestId("ctl-mic")).toHaveAccessibleName("Mute");
 
     // Guest mutes their mic: film stays as it was.
     await guest.page.getByTestId("ctl-mic").click();
@@ -114,7 +113,7 @@ test.describe("synchronised playback", () => {
     expect((await videoState(guest.page)).muted).toBe(false);
 
     // Volumes from the settings panel.
-    await guest.page.getByTestId("ctl-settings").click();
+    await guest.page.getByTestId("ctl-more").click();
     const media = guest.page.getByTestId("vol-media").getByRole("slider");
     await media.focus();
     for (let i = 0; i < 30; i++) await media.press("ArrowLeft");
@@ -131,14 +130,13 @@ test.describe("synchronised playback", () => {
 
   test("direct links play for both; non-video links are refused with an explanation", async ({ browser }) => {
     const { host, guest } = await pair(browser);
-    await guest.page.getByTestId("ctl-queue").click();
-    await guest.page.getByRole("button", { name: "Add link" }).click();
+    await openWatch(guest.page, "files");
     await guest.page.getByTestId("queue-url").fill("http://127.0.0.1:3199/not-a-video.html");
-    await guest.page.getByRole("button", { name: "Add link" }).click();
+    await guest.page.getByTestId("queue-url-add").click();
     await expect(guest.page.getByText(/couldn’t be played here/)).toBeVisible();
 
     await guest.page.getByTestId("queue-url").fill(FILM_URL);
-    await guest.page.getByRole("button", { name: "Add link" }).click();
+    await guest.page.getByTestId("queue-url-add").click();
     for (const p of [host.page, guest.page]) await expect.poll(async () => (await videoState(p)).ready, { timeout: 15_000 }).toBeGreaterThanOrEqual(1);
     await host.page.getByTestId("play-toggle").click();
     await host.page.waitForTimeout(2500);
@@ -147,15 +145,19 @@ test.describe("synchronised playback", () => {
 
   test("the watchlist is shared: add, reorder, play next, remove", async ({ browser }) => {
     const { host, guest } = await pair(browser);
-    await host.page.getByTestId("ctl-queue").click();
-    await guest.page.getByTestId("ctl-queue").click();
+    await openWatch(host.page, "files");
     await host.page.getByTestId("queue-file").setInputFiles(FILM);
-    await expect(guest.page.getByTestId("queue-list")).toContainText("test-film");
-    await guest.page.getByRole("button", { name: "Add link" }).click();
+    await expect(host.page.getByTestId("watch-picker")).toBeHidden();
+    await openWatch(guest.page, "files");
     await guest.page.getByTestId("queue-url").fill(FILM_URL);
-    await guest.page.getByRole("button", { name: "Add link" }).click();
-    await expect(host.page.getByTestId("queue-list").locator("li")).toHaveCount(2);
+    await guest.page.getByTestId("queue-url-add").click();
+    await expect(guest.page.getByTestId("watch-picker")).toBeHidden({ timeout: 15_000 });
 
+    for (const p of [host.page, guest.page]) {
+      await p.getByTestId("ctl-more").click();
+      await p.getByTestId("ctl-queue").click();
+    }
+    await expect(host.page.getByTestId("queue-list").locator("li")).toHaveCount(2);
     // Currently playing is marked for both.
     await expect(guest.page.locator("li[aria-current=true]")).toContainText("test-film");
     // Reorder from the host; the guest sees the new order.
@@ -167,6 +169,7 @@ test.describe("synchronised playback", () => {
     await guest.page.getByRole("button", { name: /^Play .* now$/ }).first().click();
     await expect(host.page.locator("li[aria-current=true]")).toContainText("Link");
     // Remove the file item.
+    await host.page.getByTestId("queue-list").locator("li").nth(1).hover();
     await host.page.getByRole("button", { name: /^Remove test-film$/ }).click();
     await expect(guest.page.getByTestId("queue-list").locator("li")).toHaveCount(1);
   });

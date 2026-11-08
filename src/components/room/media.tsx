@@ -85,7 +85,7 @@ export function ParticipantTile({
     <div
       className={cn(
         "relative h-full w-full overflow-hidden bg-ink-850 transition-shadow duration-200",
-        participant.isSpeaking && !micMuted ? "shadow-[0_0_0_2px_var(--color-lamp)]" : "shadow-[0_0_0_1px_var(--line)]",
+        participant.isSpeaking && !micMuted ? "shadow-[inset_0_0_0_3px_var(--color-ok)]" : "",
         className,
       )}
       data-testid={isLocal ? "tile-local" : "tile-remote"}
@@ -95,20 +95,20 @@ export function ParticipantTile({
       {track ? (
         <TrackVideo track={track} mirror={isLocal && mirror} testId={isLocal ? "video-local" : "video-remote"} />
       ) : (
-        <div className="grid h-full w-full place-items-center" style={{ background: `radial-gradient(120% 100% at 50% 0%, hsl(${hue} 20% 22%), hsl(${hue} 14% 11%))` }}>
+        <div className="grid h-full w-full place-items-center" style={{ background: `radial-gradient(120% 100% at 50% 20%, hsl(${hue} 30% 20%), #0c0c0e)` }}>
           <span
-            className={cn("grid place-items-center rounded-full font-display text-paper", compact ? "size-10 text-[20px]" : "size-[min(30%,96px)] text-[clamp(20px,4vw,44px)]")}
-            style={{ background: `hsl(${hue} 22% 30%)`, aspectRatio: "1" }}
+            className={cn("grid place-items-center rounded-full font-semibold text-white", compact ? "size-11 text-[18px]" : "size-[min(32%,112px)] text-[clamp(20px,4vw,44px)]")}
+            style={{ background: `hsl(${hue} 45% 40%)`, aspectRatio: "1" }}
             aria-hidden
           >
             {display.slice(0, 1).toUpperCase()}
           </span>
         </div>
       )}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/55 to-transparent px-2.5 pb-2 pt-6">
-        {micMuted && <MicOff className="size-3.5 shrink-0 text-danger" aria-label="Microphone off" />}
-        <span className="truncate text-[12px] font-medium text-white/95 [text-shadow:0_1px_2px_rgb(0_0_0/0.6)]">{isLocal ? `${display} (you)` : display}</span>
-        {!isLocal && <QualityBars q={participant.connectionQuality} className="ml-auto" />}
+      <div className="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-16px)] items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1 backdrop-blur-md">
+        {micMuted && <MicOff className="size-3.5 shrink-0 text-white" aria-label="Microphone off" />}
+        <span className="truncate text-[12px] font-semibold text-white">{isLocal ? "You" : display}</span>
+        {!isLocal && <QualityBars q={participant.connectionQuality} />}
       </div>
     </div>
   );

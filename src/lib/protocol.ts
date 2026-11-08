@@ -45,6 +45,11 @@ export const playbackIntentBody = z.object({
 
 export const addQueueItemBody = z.discriminatedUnion("kind", [
   z.object({
+    kind: z.literal("youtube"),
+    /** A YouTube URL or bare 11-char id. */
+    url: z.string().trim().min(5).max(2048),
+  }),
+  z.object({
     kind: z.literal("url"),
     url: httpUrlSchema,
     title: z.string().trim().min(1).max(120).optional(),
@@ -58,6 +63,8 @@ export const addQueueItemBody = z.discriminatedUnion("kind", [
   }),
 ]);
 
+export const startBrowserBody = z.object({ startUrl: httpUrlSchema.optional() });
+
 export const reorderQueueBody = z.object({ orderedIds: z.array(z.string().uuid()).max(200) });
 
 export interface ParticipantDTO {
@@ -69,9 +76,11 @@ export interface ParticipantDTO {
 
 export interface QueueItemDTO {
   id: string;
-  kind: "file" | "url";
+  kind: "file" | "url" | "youtube";
   title: string;
   url: string | null;
+  externalId: string | null;
+  thumbnailUrl: string | null;
   fileName: string | null;
   fileSize: number | null;
   durationSec: number | null;
@@ -85,8 +94,23 @@ export interface RoomStateDTO {
   playback: PlaybackState;
   queue: QueueItemDTO[];
   serverNowMs: number;
+  browser: BrowserStateDTO;
+  features: { youtubeSearch: boolean; sharedBrowser: boolean };
   /** Only present for the host. */
   inviteUrl?: string;
+}
+
+export interface BrowserStateDTO {
+  active: boolean;
+  startedBy: string | null;
+  startedAt: string | null;
+}
+
+export interface YouTubeResultDTO {
+  id: string;
+  title: string;
+  channel: string | null;
+  thumbnailUrl: string;
 }
 
 export interface ApiError {
@@ -101,6 +125,7 @@ export type ServerMessage =
   | { kind: "playback"; state: PlaybackState }
   | { kind: "queue"; items: QueueItemDTO[] }
   | { kind: "participants"; participants: ParticipantDTO[] }
+  | { kind: "browser"; browser: BrowserStateDTO }
   | { kind: "room-ended" };
 
 /** Peer ↔ peer topics. */

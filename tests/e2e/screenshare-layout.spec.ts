@@ -40,7 +40,7 @@ test.describe("screen sharing and layouts", () => {
     await expect(stage).toHaveAttribute("data-layout", "cinema");
 
     for (const layout of ["face", "compact", "cinema"] as const) {
-      await host.page.getByTestId("ctl-layout").click();
+      await host.page.getByTestId("ctl-more").click();
       await host.page.getByTestId(`layout-${layout}`).click();
       await expect(stage).toHaveAttribute("data-layout", layout);
       await expect(host.page.locator("[data-testid=room]")).toHaveAttribute("data-conn", "connected");

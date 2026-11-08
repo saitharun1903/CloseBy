@@ -1,7 +1,7 @@
 "use client";
 import { create } from "zustand";
 import type { PlaybackState } from "@/lib/playback";
-import type { ChatMessage, MediaReady, ParticipantDTO, QueueItemDTO, RoomStateDTO } from "@/lib/protocol";
+import type { BrowserStateDTO, ChatMessage, MediaReady, ParticipantDTO, QueueItemDTO, RoomStateDTO } from "@/lib/protocol";
 import { loadSoundPrefs, saveSoundPrefs, type SoundPrefs } from "@/lib/prefs";
 
 export type ConnState = "connecting" | "connected" | "reconnecting" | "disconnected" | "ended";
@@ -37,6 +37,10 @@ export interface RoomStore {
   inviteUrl?: string;
   expiresAt: string;
   hasPin: boolean;
+  browser: BrowserStateDTO;
+  features: { youtubeSearch: boolean; sharedBrowser: boolean };
+  /** The "Watch together" picker. */
+  watchOpen: boolean;
 
   conn: ConnState;
   end?: EndInfo;
@@ -76,6 +80,9 @@ export function initRoomStore(s: RoomStateDTO) {
       inviteUrl: s.inviteUrl,
       expiresAt: s.room.expiresAt,
       hasPin: s.room.hasPin,
+      browser: s.browser,
+      features: s.features,
+      watchOpen: false,
       conn: "connecting",
       end: undefined,
       lk: 0,

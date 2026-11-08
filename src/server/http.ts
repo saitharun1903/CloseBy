@@ -5,14 +5,31 @@ import { ROOM_ID_RE } from "./crypto";
 import { getDb } from "./db";
 import { env } from "./env";
 import { AppError } from "./errors";
+import { createHyperbeamProvider, type BrowserProvider } from "./hyperbeam";
 import { getGateway } from "./livekit";
+import { createYouTubeService, type YouTubeService } from "./youtube";
 import { hit, type RateRule } from "./ratelimit";
 import type { RoomDeps } from "./rooms";
 import { sessionCookieName, signSession, verifySession, type SessionClaims } from "./session";
 
+let services: { youtube: YouTubeService; browser: BrowserProvider | null } | null = null;
+
 export function deps(): RoomDeps {
   const e = env();
-  return { db: getDb(), gateway: getGateway(), secret: e.SESSION_SECRET, appUrl: e.APP_URL, ttlHours: e.ROOM_TTL_HOURS };
+  services ??= {
+    youtube: createYouTubeService(e.YOUTUBE_API_KEY || undefined, fetch, e.YOUTUBE_OEMBED_URL),
+    browser: e.HYPERBEAM_API_KEY ? createHyperbeamProvider(e.HYPERBEAM_API_KEY) : null,
+  };
+  return {
+    db: getDb(),
+    gateway: getGateway(),
+    secret: e.SESSION_SECRET,
+    appUrl: e.APP_URL,
+    ttlHours: e.ROOM_TTL_HOURS,
+    youtube: services.youtube,
+    browser: services.browser,
+    browserRegion: e.HYPERBEAM_REGION,
+  };
 }
 
 export function errorResponse(err: unknown) {

@@ -11,6 +11,7 @@ const LIVEKIT_BIN = process.env.LIVEKIT_BIN ?? "livekit-server";
  */
 export default defineConfig({
   testDir: "tests/e2e",
+  globalSetup: "./tests/e2e/global-setup.ts",
   timeout: 90_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
@@ -57,6 +58,7 @@ export default defineConfig({
         REDIS_URL: "",
         // Tests create far more rooms from one IP than any person would.
         RATE_LIMIT_SCALE: "50",
+        YOUTUBE_OEMBED_URL: "http://127.0.0.1:3199/oembed",
       },
     },
     {

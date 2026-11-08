@@ -7,12 +7,12 @@ export function Switch({ className, ...props }: ComponentProps<typeof S.Root>) {
   return (
     <S.Root
       className={cn(
-        "relative h-5 w-9 shrink-0 rounded-full bg-ink-600 transition-colors data-[state=checked]:bg-lamp",
+        "relative h-[22px] w-10 shrink-0 rounded-full bg-ink-600 transition-colors data-[state=checked]:bg-ok",
         className,
       )}
       {...props}
     >
-      <S.Thumb className="block size-4 translate-x-0.5 rounded-full bg-paper shadow transition-transform data-[state=checked]:translate-x-[18px] data-[state=checked]:bg-lamp-ink" />
+      <S.Thumb className="block size-[18px] translate-x-0.5 rounded-full bg-paper shadow transition-transform data-[state=checked]:translate-x-5 data-[state=checked]:bg-white" />
     </S.Root>
   );
 }
