@@ -28,8 +28,11 @@ const YOUTUBE = {
 };
 // Hyperbeam shared browser: the SDK loads its runtime from the session host and
 // falls back to Hyperbeam's relay domain on networks that block hyperbeam.com.
+// It downloads that runtime and runs it via import(blob:…), so blob: must be an
+// allowed script source (blob URLs can only be minted by code already on the page).
 const HYPERBEAM = {
-  script: ["https://*.hyperbeam.com", "https://jquery.tutturu.workers.dev"],
+  script: ["blob:", "https://*.hyperbeam.com", "https://jquery.tutturu.workers.dev"],
+  img: ["https://*.hyperbeam.com"],
   connect: ["https://*.hyperbeam.com", "wss://*.hyperbeam.com", "https://jquery.tutturu.workers.dev", "wss://jquery.tutturu.workers.dev"],
   frame: ["https://*.hyperbeam.com"],
 };
@@ -39,7 +42,7 @@ const csp = [
   // Next.js injects inline bootstrap scripts; nonces would force dynamic rendering everywhere.
   `script-src 'self' 'unsafe-inline' ${[...YOUTUBE.script, ...HYPERBEAM.script].join(" ")}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${YOUTUBE.img.join(" ")}`,
+  `img-src 'self' data: blob: ${[...YOUTUBE.img, ...HYPERBEAM.img].join(" ")}`,
   "font-src 'self' data:",
   // Media: local files (blob:) and user-supplied direct https URLs.
   "media-src 'self' blob: https:",
