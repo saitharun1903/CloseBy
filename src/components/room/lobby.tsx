@@ -28,8 +28,10 @@ export function Lobby({ state, onJoin }: { state: RoomStateDTO; onJoin: (m: Init
   const [camOn, setCamOn] = useState(prefs.current.camOn);
   const [audio, setAudio] = useState<LocalAudioTrack | null>(null);
   const [video, setVideo] = useState<LocalVideoTrack | null>(null);
-  const [mic, setMic] = useState<DevState>({ status: "off" });
-  const [cam, setCam] = useState<DevState>({ status: "off" });
+  // Start as "starting" (not "off"): devices are acquired on mount, and Join must stay
+  // disabled until then, or a quick click would join with no microphone.
+  const [mic, setMic] = useState<DevState>({ status: "starting" });
+  const [cam, setCam] = useState<DevState>({ status: prefs.current.camOn ? "starting" : "off" });
   const [devices, setDevices] = useState<{ audioinput: MediaDeviceInfo[]; videoinput: MediaDeviceInfo[]; audiooutput: MediaDeviceInfo[] }>({
     audioinput: [],
     videoinput: [],
