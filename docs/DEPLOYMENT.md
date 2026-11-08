@@ -2,7 +2,7 @@
 
 ## Step-by-step: closeby.tech (Vercel + Neon + LiveKit Cloud + Upstash)
 
-This is the recommended path: every piece has a free tier, TLS and TURN are handled for you, and nothing needs a server you maintain. Pick regions close to your users (Mumbai `ap-south-1` / Vercel `bom1` for India).
+This is the recommended path: every piece has a free tier, TLS and TURN are handled for you, and nothing needs a server you maintain. Keep the app, database and Redis in the **same region**, close to your users. For India that's **Singapore** (`ap-southeast-1`, Vercel `sin1`) — Neon and Upstash don't offer Mumbai.
 
 ### 1. Accounts
 Vercel (sign in with GitHub), Neon (Postgres), LiveKit Cloud, Upstash (Redis). Vercel's free Hobby plan is for personal, non-commercial projects.
@@ -12,16 +12,16 @@ Vercel (sign in with GitHub), Neon (Postgres), LiveKit Cloud, Upstash (Redis). V
 2. **Settings → Keys → Create key.** Save the **API key**, **API secret** and **WebSocket URL** (`wss://<project>.livekit.cloud`).
 
 ### 3. Database (Neon)
-1. New project, region **AWS ap-south-1 (Mumbai)**.
+1. New project, region **AWS ap-southeast-1 (Singapore)**.
 2. Copy both connection strings: the **pooled** one (host contains `-pooler`) for the app, and the **direct** one for migrations. Keep `?sslmode=require`.
 3. Nothing to run by hand: every Vercel build runs `npm run db:migrate` first (the `vercel-build` script), using `DIRECT_URL` if set, otherwise `DATABASE_URL`. Already-applied migrations are skipped. Add both URLs to Vercel (see step 5).
 
 ### 4. Redis (Upstash, recommended)
-Create a Redis database in **ap-south-1** and copy the `rediss://…` URL. On Vercel your app runs on many short-lived instances, so in-memory rate limits wouldn't be shared without it.
+Create a Redis database in **ap-southeast-1 (Singapore)** and copy the `rediss://…` URL. On Vercel your app runs on many short-lived instances, so in-memory rate limits wouldn't be shared without it.
 
 ### 5. Vercel project (deploy on the vercel.app URL first)
 1. **Add New → Project → import `saitharun1903/CloseBy`.** Framework: Next.js (auto-detected). The production branch is `main`, so merge the work into `main` first.
-2. **Settings → Functions → Region:** `bom1` (next to the database).
+2. **Settings → Functions → Region:** `sin1` (Singapore, next to the database).
 3. **Settings → Environment Variables** (Production and Preview):
 
    | Name | Value |
