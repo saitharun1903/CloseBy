@@ -10,8 +10,7 @@ import {
   ScreenSharePresets,
   Track,
   VideoPresets,
-  type Participant,
-} from "livekit-client";
+  type Participant, AudioPresets } from "livekit-client";
 import { toast } from "@/components/toaster";
 import { api, ApiRequestError } from "@/lib/api";
 import { estimateClockOffset, isNewer, type ClockSample, type PlaybackIntent, type PlaybackState } from "@/lib/playback";
@@ -31,7 +30,7 @@ import {
 } from "@/lib/protocol";
 import { useRoom } from "./store";
 import { takeToken } from "./token-cache";
-import { browserProfile } from "./browser-profile";
+import { browserProfile, nearestBrowserRegion } from "./browser-profile";
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -62,6 +61,8 @@ function makeRoom(audioOutput?: string) {
       simulcast: true,
       videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360],
       screenShareEncoding: ScreenSharePresets.h1080fps30.encoding,
+      // Higher-bitrate Opus: clearer voices, especially over film sound.
+      audioPreset: AudioPresets.musicHighQuality,
       dtx: true,
       red: true,
     },
@@ -328,15 +329,16 @@ export class RoomController {
   async startBrowser(startUrl?: string) {
     type R = { embedUrl: string; browser: import("@/lib/protocol").BrowserStateDTO; profileId: string | null };
     let profile = browserProfile.wanted();
+    const region = await nearestBrowserRegion();
     let r: R;
     try {
-      r = await api<R>(`/api/rooms/${this.roomId}/browser`, { body: { startUrl, profile } });
+      r = await api<R>(`/api/rooms/${this.roomId}/browser`, { body: { startUrl, profile, region } });
     } catch (e) {
       // A saved profile can expire on the provider's side: start a fresh one instead.
       if (!profile || profile === "new") throw e;
       browserProfile.save("");
       profile = "new";
-      r = await api<R>(`/api/rooms/${this.roomId}/browser`, { body: { startUrl, profile } });
+      r = await api<R>(`/api/rooms/${this.roomId}/browser`, { body: { startUrl, profile, region } });
     }
     if (profile && r.profileId) browserProfile.save(r.profileId);
     useRoom.setState({ browser: r.browser, playback: { ...useRoom.getState().playback } });

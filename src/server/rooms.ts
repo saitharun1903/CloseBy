@@ -499,13 +499,13 @@ export function browserState(room: Room): BrowserStateDTO {
  * Start (or join) the room's shared browser. Starting it stops any synced
  * video so there's one thing on screen — and one bill — at a time.
  */
-export async function startBrowser(d: RoomDeps, claims: SessionClaims | null, roomId: string, startUrl?: string, profile?: string) {
+export async function startBrowser(d: RoomDeps, claims: SessionClaims | null, roomId: string, startUrl?: string, profile?: string, region?: "NA" | "EU" | "AS") {
   const { room, me } = await authorize(d, claims, roomId);
   if (!d.browser) throw new AppError("media_unavailable", "The shared browser isn’t enabled on this server.");
   if (room.browserSessionId && room.browserEmbedEnc) {
     return { embedUrl: decryptString(room.browserEmbedEnc, d.secret), browser: browserState(room), profileId: null as string | null };
   }
-  const session = await d.browser.start({ roomId, startUrl: startUrl ?? "https://www.youtube.com", region: d.browserRegion ?? "AS", profile });
+  const session = await d.browser.start({ roomId, startUrl: startUrl ?? "https://www.youtube.com", region: region ?? d.browserRegion ?? "AS", profile });
   const nowMs = clock(d);
   const [updated] = await d.db
     .update(rooms)

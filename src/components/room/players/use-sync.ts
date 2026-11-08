@@ -10,6 +10,7 @@ const MIN_SEEK_INTERVAL_MS = 1500;
 /** Players that can't nudge their rate (YouTube) correct by seeking past this drift. */
 const SEEK_ONLY_THRESHOLD = 0.45;
 const SEEK_ONLY_INTERVAL_MS = 2500;
+const SEEK_ONLY_MAX_INTERVAL_MS = 20_000;
 
 function setSync(s: SyncState) {
   if (useRoom.getState().sync !== s) useRoom.setState({ sync: s });
@@ -26,6 +27,19 @@ export function useSyncEngine(adapter: React.RefObject<import("./adapter").Media
   const pendingUntil = useRef(0);
   const nudging = useRef(false);
   const lastSeekAt = useRef(0);
+  /**
+   * Seek-only players (YouTube) need a moment to buffer after a seek, so a
+   * seek to "now" lands behind. We learn that delay as a lead, and back off if
+   * corrections keep repeating — on slow networks repeated seeks *are* the lag.
+   */
+  const seekLead = useRef(0.3);
+  const seekInterval = useRef(SEEK_ONLY_INTERVAL_MS);
+  const lastCorrection = useRef(0);
+  useEffect(() => {
+    seekLead.current = 0.3;
+    seekInterval.current = SEEK_ONLY_INTERVAL_MS;
+    lastCorrection.current = 0;
+  }, [mediaId]);
   /**
    * Last play/pause the engine itself issued, to tell our own state changes
    * from the user's. Seeks are deliberately excluded: a correction seek must
@@ -82,10 +96,19 @@ export function useSyncEngine(adapter: React.RefObject<import("./adapter").Media
       } else if (!a.stalled()) {
         const drift = a.time() - expected;
         if (!a.canNudge) {
-          if (Math.abs(drift) > SEEK_ONLY_THRESHOLD && now - lastSeekAt.current > SEEK_ONLY_INTERVAL_MS) {
-            seek(expected + 0.3 * st.rate);
+          if (Math.abs(drift) > SEEK_ONLY_THRESHOLD && now - lastSeekAt.current > seekInterval.current) {
+            if (lastCorrection.current && now - lastCorrection.current < 15_000) {
+              // Still off soon after the last correction: adjust the lead by what we missed, and wait longer next time.
+              seekLead.current = Math.max(0, Math.min(2.5, seekLead.current - drift / st.rate));
+              seekInterval.current = Math.min(seekInterval.current * 2, SEEK_ONLY_MAX_INTERVAL_MS);
+            }
+            lastCorrection.current = now;
+            seek(expected + seekLead.current * st.rate);
             setSync("correcting");
-          } else if (Math.abs(drift) <= SEEK_ONLY_THRESHOLD) setSync("synced");
+          } else if (Math.abs(drift) <= SEEK_ONLY_THRESHOLD) {
+            setSync("synced");
+            if (lastCorrection.current && now - lastCorrection.current > 30_000) seekInterval.current = SEEK_ONLY_INTERVAL_MS;
+          }
         } else {
           const corr = computeCorrection({ actualSec: a.time(), expectedSec: expected, nominalRate: st.rate, playing: true, wasNudging: nudging.current });
           if (corr.kind === "seek") {

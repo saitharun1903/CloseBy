@@ -17,7 +17,7 @@ export const POST = route(async (req, { params }: RoomCtx) => {
   const claims = await readSession(roomId);
   await limit("browser", claims?.pid ?? roomId, RULES.browser);
   const body = await readJson(req, startBrowserBody);
-  return NextResponse.json(await startBrowser(deps(), claims, roomId, body.startUrl, body.profile));
+  return NextResponse.json(await startBrowser(deps(), claims, roomId, body.startUrl, body.profile, body.region));
 });
 
 export const DELETE = route(async (_req, { params }: RoomCtx) => {

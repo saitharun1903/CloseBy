@@ -67,6 +67,8 @@ export const startBrowserBody = z.object({
   startUrl: httpUrlSchema.optional(),
   /** "new" saves a fresh profile; an id loads (and updates) a saved one. */
   profile: z.union([z.literal("new"), z.string().regex(/^[A-Za-z0-9_-]{8,64}$/)]).optional(),
+  /** Nearest browser region, as detected on the client. */
+  region: z.enum(["NA", "EU", "AS"]).optional(),
 });
 
 export const reorderQueueBody = z.object({ orderedIds: z.array(z.string().uuid()).max(200) });

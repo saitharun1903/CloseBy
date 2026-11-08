@@ -36,3 +36,22 @@ export const browserProfile = {
     set(KEY, id || null);
   },
 };
+
+/**
+ * Hyperbeam's own lookup of the closest data-centre region for this device
+ * (cached). Falls back to the server default if it can't be reached quickly.
+ */
+let regionCache: Promise<"NA" | "EU" | "AS" | undefined> | null = null;
+export function nearestBrowserRegion(): Promise<"NA" | "EU" | "AS" | undefined> {
+  regionCache ??= (async () => {
+    try {
+      const { getRegionInfo } = await import("@hyperbeam/web");
+      const info = await Promise.race([getRegionInfo(), new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
+      const reg = info?.region?.toUpperCase();
+      return reg === "NA" || reg === "EU" || reg === "AS" ? reg : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+  return regionCache;
+}

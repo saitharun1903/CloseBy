@@ -7,6 +7,15 @@ async function bothInSync(a: Page, b: Page, tol: number) {
   return Math.abs(x.drift) < tol && Math.abs(y.drift) < tol;
 }
 
+/** In sync for a full second (several samples), not just one lucky reading. */
+async function settledInSync(a: Page, b: Page, tol: number) {
+  for (let i = 0; i < 4; i++) {
+    if (!(await bothInSync(a, b, tol))) return false;
+    await a.waitForTimeout(250);
+  }
+  return true;
+}
+
 async function gap(a: Page, b: Page) {
   const [x, y] = await Promise.all([videoState(a), videoState(b)]);
   return Math.abs(x.t - y.t);
@@ -54,7 +63,7 @@ test.describe("synchronised playback", () => {
     await host.page.getByTestId("play-toggle").click();
     await expect.poll(async () => (await videoState(guest.page)).paused).toBe(false);
     await expect.poll(async () => (await videoState(guest.page)).rate, { timeout: 10_000 }).toBeGreaterThan(1.4);
-    await expect.poll(() => bothInSync(host.page, guest.page, 0.2), { timeout: 10_000 }).toBe(true);
+    await expect.poll(() => settledInSync(host.page, guest.page, 0.2), { timeout: 15_000 }).toBe(true);
     for (let i = 0; i < 6; i++) {
       await host.page.waitForTimeout(500);
       expect(await bothInSync(host.page, guest.page, 0.2)).toBe(true);
