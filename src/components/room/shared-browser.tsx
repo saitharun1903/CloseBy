@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useController } from "./context";
-import { useRoom } from "./store";
+import { setSound, useRoom } from "./store";
 import { toast } from "@/components/toaster";
 
-type HB = { volume: number; destroy(): void };
+type HB = { volume: number; playoutDelay: boolean; ping(): void; destroy(): void };
 
 /**
  * The room's shared cloud browser (Hyperbeam): one real Chrome that both
@@ -25,6 +25,8 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
   const startedBy = useRoom((s) => s.participants.find((p) => p.id === s.browser.startedBy)?.displayName);
   const isMe = useRoom((s) => s.browser.startedBy === s.me.id);
   const [attempt, setAttempt] = useState(0);
+  // Smooth: a small playout buffer so video doesn't stutter (clicks feel a touch slower).
+  const smooth = useRoom((s) => s.sound.smoothBrowser !== false);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +46,7 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
         const s = useRoom.getState();
         const inst = await Hyperbeam(box.current, embedUrl, {
           volume: s.mediaMuted ? 0 : s.sound.mediaVolume,
+          playoutDelay: s.sound.smoothBrowser !== false,
           onDisconnect: (e) => {
             if (cancelled) return;
             setStatus("error");
@@ -95,6 +98,19 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
     if (hb.current) hb.current.volume = muted ? 0 : volume;
   }, [volume, muted]);
 
+  useEffect(() => {
+    if (hb.current) hb.current.playoutDelay = smooth;
+  }, [smooth, status]);
+
+  // Watching a film means no clicks for a long time: tell the service we're still here.
+  useEffect(() => {
+    if (status !== "ready") return;
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") hb.current?.ping();
+    }, 4 * 60_000);
+    return () => clearInterval(t);
+  }, [status]);
+
   return (
     <div className={cn("relative flex h-full w-full flex-col bg-black", mode === "mini" && "overflow-hidden rounded-xl")} data-testid="shared-browser">
       {mode === "main" && (
@@ -104,7 +120,18 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
             Shared browser · {isMe ? "you started it" : `started by ${startedBy ?? "your partner"}`}
             <span className="max-md:hidden"> · you can both click and type · sign in with Google inside it</span>
           </span>
-          <Button size="sm" variant="secondary" className="ml-auto" onClick={() => void c.stopBrowser().catch((e) => c.handleApiError(e, "Couldn’t close the browser"))} data-testid="browser-stop">
+          <button
+            type="button"
+            onClick={() => setSound({ smoothBrowser: !smooth })}
+            className="ml-auto flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-white/[0.08] px-3 text-[12px] font-semibold text-paper hover:bg-white/[0.14]"
+            title={smooth ? "Smooth video: tiny buffer, no stutter. Tap for snappier clicks." : "Responsive: instant clicks, video may stutter. Tap for smoother video."}
+            aria-pressed={smooth}
+            data-testid="browser-smooth"
+          >
+            <span className={cn("size-1.5 rounded-full", smooth ? "bg-ok" : "bg-white/40")} />
+            {smooth ? "Smooth video" : "Responsive"}
+          </button>
+          <Button size="sm" variant="secondary" onClick={() => void c.stopBrowser().catch((e) => c.handleApiError(e, "Couldn’t close the browser"))} data-testid="browser-stop">
             <Power /> Close for both
           </Button>
         </div>
