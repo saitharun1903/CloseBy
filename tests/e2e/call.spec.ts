@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { createRoom, enterRoom, inboundStats, inviteUrl, joinAsGuest, newPerson, pair } from "./helpers";
+import { closeEveryone, createRoom, enterRoom, inboundStats, inviteUrl, joinAsGuest, newPerson, pair } from "./helpers";
 
 test.describe("two-person call", () => {
+  test.afterEach(closeEveryone);
+
   test("both join, see each other, and receive each other's microphone audio", async ({ browser }) => {
     const { host, guest } = await pair(browser);
 

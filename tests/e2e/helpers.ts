@@ -5,8 +5,17 @@ import { fileURLToPath } from "node:url";
 export const FILM = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures", "test-film.webm");
 export const FILM_URL = "http://127.0.0.1:3199/test-film.webm";
 
+const openContexts = new Set<BrowserContext>();
+
+/** Close every browser context a test opened (each holds camera/mic captures and a LiveKit connection). */
+export async function closeEveryone() {
+  await Promise.all([...openContexts].map((c) => c.close().catch(() => {})));
+  openContexts.clear();
+}
+
 export async function newPerson(browser: Browser, opts: { viewport?: { width: number; height: number } } = {}): Promise<{ ctx: BrowserContext; page: Page }> {
   const ctx = await browser.newContext({ permissions: ["camera", "microphone"], viewport: opts.viewport ?? { width: 1360, height: 860 } });
+  openContexts.add(ctx);
   const page = await ctx.newPage();
   page.on("pageerror", (e) => console.log(`[pageerror] ${e.message}`));
   return { ctx, page };

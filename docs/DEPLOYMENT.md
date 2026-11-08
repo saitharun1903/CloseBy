@@ -1,5 +1,75 @@
 # Deploying Closeby
 
+## Step-by-step: closeby.tech (Vercel + Neon + LiveKit Cloud + Upstash)
+
+This is the recommended path: every piece has a free tier, TLS and TURN are handled for you, and nothing needs a server you maintain. Pick regions close to your users (Mumbai `ap-south-1` / Vercel `bom1` for India).
+
+### 1. Accounts
+Vercel (sign in with GitHub), Neon (Postgres), LiveKit Cloud, Upstash (Redis). Vercel's free Hobby plan is for personal, non-commercial projects.
+
+### 2. LiveKit Cloud
+1. cloud.livekit.io → **New project**.
+2. **Settings → Keys → Create key.** Save the **API key**, **API secret** and **WebSocket URL** (`wss://<project>.livekit.cloud`).
+
+### 3. Database (Neon)
+1. New project, region **AWS ap-south-1 (Mumbai)**.
+2. Copy both connection strings: the **pooled** one (host contains `-pooler`) for the app, and the **direct** one for migrations. Keep `?sslmode=require`.
+3. Apply the schema from your machine using the **direct** URL:
+   ```bash
+   DATABASE_URL="postgres://…direct-host…/neondb?sslmode=require" npm run db:migrate
+   ```
+
+### 4. Redis (Upstash, recommended)
+Create a Redis database in **ap-south-1** and copy the `rediss://…` URL. On Vercel your app runs on many short-lived instances, so in-memory rate limits wouldn't be shared without it.
+
+### 5. Vercel project (deploy on the vercel.app URL first)
+1. **Add New → Project → import `saitharun1903/CloseBy`.** Framework: Next.js (auto-detected). The production branch is `main`, so merge the work into `main` first.
+2. **Settings → Functions → Region:** `bom1` (next to the database).
+3. **Settings → Environment Variables** (Production and Preview):
+
+   | Name | Value |
+   | --- | --- |
+   | `APP_URL` | `https://<project>.vercel.app` for now; switched to `https://closeby.tech` in step 7 |
+   | `SESSION_SECRET` | output of `openssl rand -base64 48` |
+   | `DATABASE_URL` | the Neon pooled URL |
+   | `REDIS_URL` | the Upstash `rediss://` URL |
+   | `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | from step 2 |
+   | `LIVEKIT_API_URL` | `https://<project>.livekit.cloud` |
+   | `NEXT_PUBLIC_LIVEKIT_URL` | `wss://<project>.livekit.cloud` |
+   | `CRON_SECRET` | output of `openssl rand -hex 24` |
+   | `ROOM_TTL_HOURS` | `12` (optional) |
+
+   `NEXT_PUBLIC_LIVEKIT_URL` is baked into the build (it shapes the CSP), so **redeploy after changing it**.
+4. **Deploy.** `vercel.json` registers a daily cleanup cron; Vercel sends `Authorization: Bearer $CRON_SECRET` to `GET /api/cron/cleanup` automatically. Expired rooms are also purged whenever a new room is created.
+
+### 6. Verify on the vercel.app URL, before the domain points at it
+1. `https://<project>.vercel.app/api/health` → `{"ok":true}` (database reachable).
+2. Run the **manual two-device pass** in [TESTING.md](TESTING.md) with two real devices, ideally on different networks (Wi-Fi + mobile hotspot). At minimum: both see and hear each other; a film plays in sync and either side can pause or seek; film and voice volumes are independent; Chrome tab share with sound; a third browser is refused; refresh rejoins; ending the room kicks both.
+3. If the call won't connect: check the LiveKit key/secret/URL variables and **redeploy**. The browser console will show any CSP block.
+
+### 7. Point closeby.tech at Vercel
+1. Vercel → **Settings → Domains → Add** `closeby.tech` (and `www.closeby.tech`, set to redirect to the apex).
+2. Vercel then shows the exact DNS records to create. Typically:
+
+   | Type | Host | Value |
+   | --- | --- | --- |
+   | A | `@` | `76.76.21.21` |
+   | CNAME | `www` | `cname.vercel-dns.com` |
+
+   **Use the values Vercel displays for your project if they differ.**
+3. At the registrar (Namify → closeby.tech → **DNS**): delete any existing parking/default `A`, `AAAA` or `CNAME` records for `@` and `www`, then add the records above. Don't turn on Domain Forwarding: it conflicts with these records.
+4. Wait until Vercel shows **Valid Configuration** (minutes to a few hours). The HTTPS certificate is issued automatically.
+5. Change `APP_URL` to `https://closeby.tech` and **redeploy**, so invite links use the real domain.
+6. Optional: in LiveKit Cloud **Settings → Webhooks**, add `https://closeby.tech/api/livekit/webhook` (signed with your API key) so abandoned guest seats free up faster.
+
+### 8. After launch
+- Create a room at https://closeby.tech, open the invite on your phone over mobile data, and make sure the call connects.
+- Note: HSTS with `preload` is sent, so closeby.tech must stay HTTPS-only (it will on Vercel).
+
+---
+
+## General reference
+
 You need three things: the Next.js app, PostgreSQL, and LiveKit (self-hosted or LiveKit Cloud). Redis is recommended once you run more than one app instance.
 
 ## 1. LiveKit
@@ -64,7 +134,7 @@ curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://<app>/api/cron
 Health check: `GET /api/health` (checks the database).
 
 ### Vercel / serverless
-Works as-is (route handlers are stateless). Use a pooled Postgres URL, set `REDIS_URL` (e.g. Upstash Redis over the Redis protocol), and use Vercel Cron for the cleanup call.
+See the step-by-step guide at the top. Route handlers are stateless; use a pooled Postgres URL and `REDIS_URL`.
 
 ## Checklist before going live
 - [ ] HTTPS on the app and `wss://` on LiveKit

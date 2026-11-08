@@ -73,6 +73,6 @@ Legend: **✅ Auto** — implemented and covered by automated tests that were ru
 | Short-lived, identity-bound LiveKit tokens with restricted sources | ✅ Impl |
 | Server-only trust for playback/membership broadcasts | ✅ Impl |
 | Origin check on mutations; zod validation; rate limits; Redis option | ✅ Auto (validation, limiter) · origin ✅ Impl |
-| HSTS, CSP, Permissions-Policy, no-referrer, frame-ancestors none (production) | ✅ Impl — production build passes; headers not exercised against a live HTTPS deployment |
+| HSTS, CSP, Permissions-Policy, no-referrer, frame-ancestors none (production) | ✅ Verified on a local production build over HTTPS (headers present, no CSP violations through create → lobby → invite → join → token). Live LiveKit Cloud connection: 🧪 verify on the preview deploy |
 | LiveKit webhook (signature-verified) for presence | ✅ Impl (untested against LiveKit Cloud) |
 | No recording, no uploads, no chat storage | ✅ By design |

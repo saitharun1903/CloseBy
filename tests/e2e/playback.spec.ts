@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, drift, enterRoom, FILM, FILM_URL, inviteUrl, joinAsGuest, loadFilmForBoth, newPerson, pair, videoState } from "./helpers";
+import { closeEveryone, createRoom, drift, enterRoom, FILM, FILM_URL, inviteUrl, joinAsGuest, loadFilmForBoth, newPerson, pair, videoState } from "./helpers";
 
 /** Both players within `tol` of the server trajectory, measured in-page (no cross-page skew). */
 async function bothInSync(a: Page, b: Page, tol: number) {
@@ -13,6 +13,8 @@ async function gap(a: Page, b: Page) {
 }
 
 test.describe("synchronised playback", () => {
+  test.afterEach(closeEveryone);
+
   test("either person controls play, pause, seek and speed; both stay in sync", async ({ browser }) => {
     const { host, guest } = await pair(browser);
     await loadFilmForBoth(host.page, guest.page);

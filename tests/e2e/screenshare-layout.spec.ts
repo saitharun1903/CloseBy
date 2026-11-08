@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { loadFilmForBoth, pair } from "./helpers";
+import { closeEveryone, loadFilmForBoth, pair } from "./helpers";
 
 test.describe("screen sharing and layouts", () => {
+  test.afterEach(closeEveryone);
+
   test("sharing reaches the partner, shows an honest audio indicator, and stops cleanly", async ({ browser }) => {
     const { host, guest } = await pair(browser);
     const supported = await host.page.evaluate(async () => {
