@@ -76,6 +76,7 @@ export class RoomController {
   private disposed = false;
   private clockTimer?: ReturnType<typeof setInterval>;
   private chatTimer?: ReturnType<typeof setInterval>;
+  private stateTimer?: ReturnType<typeof setInterval>;
   private retry = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
   private lastMediaReady: MediaReady | null = null;
@@ -94,9 +95,19 @@ export class RoomController {
     void this.syncClock();
     this.clockTimer = setInterval(() => void this.syncClock(), 60_000);
     this.chatTimer = setInterval(() => this.expireChat(), 30_000);
+    // Safety net: server broadcasts are best-effort, so re-sync periodically. Playback merges by
+    // version, so this can never roll state back.
+    this.stateTimer = setInterval(() => {
+      if (useRoom.getState().conn === "connected" && document.visibilityState === "visible") void this.refreshState();
+    }, 10_000);
+    document.addEventListener("visibilitychange", this.onVisible);
     window.addEventListener("online", this.onOnline);
     await this.connect(true);
   }
+
+  private onVisible = () => {
+    if (document.visibilityState === "visible" && useRoom.getState().conn === "connected") void this.refreshState();
+  };
 
   private onOnline = () => {
     if (useRoom.getState().conn === "disconnected" && useRoom.getState().end?.canRejoin) void this.rejoin();
@@ -195,6 +206,8 @@ export class RoomController {
     this.disposed = true;
     clearInterval(this.clockTimer);
     clearInterval(this.chatTimer);
+    clearInterval(this.stateTimer);
+    document.removeEventListener("visibilitychange", this.onVisible);
     clearTimeout(this.retryTimer);
     window.removeEventListener("online", this.onOnline);
     for (const pub of this.room.localParticipant.trackPublications.values()) pub.track?.stop();

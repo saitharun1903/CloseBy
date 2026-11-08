@@ -59,7 +59,7 @@ Implemented in `src/lib/playback.ts` (pure, unit-tested) and `src/components/roo
 
 A paused player more than 250 ms off is re-seeked. Background tabs are re-synced on `visibilitychange`. The UI shows *In sync / Syncing… / Buffering… / Sam isn't ready yet*.
 
-**Late join & reconnection.** On connect, refresh, or LiveKit `Reconnected`, the client refetches `/state`, so missed broadcasts don't matter. Readiness (`cb.media`) is re-announced so the partner's indicator is right.
+**Late join, reconnection and missed messages.** On connect, refresh, LiveKit `Reconnected`, tab focus, and every 10 s while connected, the client refetches `/state`. Server broadcasts are therefore an optimisation for latency, not a correctness dependency: a dropped broadcast is repaired within 10 s, and version-based merging means a stale response can never roll playback back. Readiness (`cb.media`) is re-announced so the partner's indicator is right.
 
 **End of item.** Only the host advances to the next queue item (avoids double-advancing).
 
