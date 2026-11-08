@@ -4,7 +4,14 @@ import { env } from "@/server/env";
 import { deps, errorResponse } from "@/server/http";
 import { cleanupExpiredRooms } from "@/server/rooms";
 
-/** Call periodically (e.g. every 10 min) with `Authorization: Bearer $CRON_SECRET`. */
+/**
+ * Call periodically with `Authorization: Bearer $CRON_SECRET`.
+ * GET is what Vercel Cron sends (it adds that header automatically when CRON_SECRET is set).
+ */
+export async function GET(req: Request) {
+  return POST(req);
+}
+
 export async function POST(req: Request) {
   const secret = env().CRON_SECRET;
   const got = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";

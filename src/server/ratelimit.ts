@@ -59,7 +59,14 @@ async function hitMemory(key: string, rule: RateRule): Promise<RateLimitResult> 
   };
 }
 
-export async function hit(bucket: string, id: string, rule: RateRule): Promise<RateLimitResult> {
+/** Multiplies every limit. 1 in production; raised only for automated tests that create many rooms. */
+function scaled(rule: RateRule): RateRule {
+  const k = Number(process.env.RATE_LIMIT_SCALE ?? 1);
+  return Number.isFinite(k) && k > 0 ? { ...rule, limit: Math.ceil(rule.limit * k) } : rule;
+}
+
+export async function hit(bucket: string, id: string, rawRule: RateRule): Promise<RateLimitResult> {
+  const rule = scaled(rawRule);
   const key = `cb:rl:${bucket}:${id}`;
   const r = getRedis();
   if (r && r.status === "ready") {
@@ -76,7 +83,8 @@ export async function hit(bucket: string, id: string, rule: RateRule): Promise<R
 }
 
 /** Peek without incrementing (used to block PIN attempts after too many failures). */
-export async function peek(bucket: string, id: string, rule: RateRule): Promise<RateLimitResult> {
+export async function peek(bucket: string, id: string, rawRule: RateRule): Promise<RateLimitResult> {
+  const rule = scaled(rawRule);
   const key = `cb:rl:${bucket}:${id}`;
   const r = getRedis();
   if (r && r.status === "ready") {

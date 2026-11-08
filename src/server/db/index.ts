@@ -10,7 +10,10 @@ export function getDb(): DB {
   if (!globalForDb.__closebyDb) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL is not set");
-    const sql = postgres(url, { max: 10, idle_timeout: 30, prepare: true });
+    // Transaction-mode poolers (Neon "-pooler" hosts, Supabase pooler on :6543) can't use named
+    // prepared statements reliably, so turn them off there.
+    const pooled = /-pooler\.|:6543\//.test(url);
+    const sql = postgres(url, { max: pooled ? 5 : 10, idle_timeout: 30, prepare: !pooled });
     globalForDb.__closebyDb = { db: drizzle(sql, { schema }), sql };
   }
   return globalForDb.__closebyDb.db;

@@ -8,8 +8,12 @@ function livekitOrigins(): string[] {
   try {
     const u = new URL(raw);
     const httpProto = u.protocol === "wss:" ? "https:" : "http:";
-    // livekit-client talks to the signal server over ws(s) and may fetch
-    // region settings over http(s) on the same host.
+    // LiveKit Cloud: the client fetches /settings/regions and may fail over to
+    // other regional hosts under the same domain, so allow the whole domain.
+    for (const cloud of ["livekit.cloud", "livekit.run"]) {
+      if (u.hostname.endsWith(`.${cloud}`)) return [`wss://*.${cloud}`, `https://*.${cloud}`];
+    }
+    // Self-hosted: signalling over ws(s) and settings over http(s) on the same host.
     return [`${u.protocol}//${u.host}`, `${httpProto}//${u.host}`];
   } catch {
     return [];
@@ -53,6 +57,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  agentRules: false,
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   serverExternalPackages: ["postgres", "ioredis", "livekit-server-sdk"],
   async headers() {
