@@ -18,7 +18,12 @@ test.describe("synchronised playback", () => {
     await expect.poll(async () => (await videoState(guest.page)).paused).toBe(false);
     await host.page.waitForTimeout(3000);
     expect((await videoState(host.page)).t).toBeGreaterThan(2);
-    expect(await gap(host.page, guest.page)).toBeLessThan(0.35);
+    // Converges quickly, then holds: sample the gap repeatedly over 3 seconds.
+    await expect.poll(() => gap(host.page, guest.page), { timeout: 8000 }).toBeLessThan(0.35);
+    for (let i = 0; i < 6; i++) {
+      await host.page.waitForTimeout(500);
+      expect(await gap(host.page, guest.page)).toBeLessThan(0.35);
+    }
 
     // Guest pauses: host pauses at (nearly) the same frame.
     await guest.page.locator("[data-testid=player]").hover();

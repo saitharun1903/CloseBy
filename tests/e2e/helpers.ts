@@ -29,7 +29,11 @@ export async function createRoom(page: Page, name = "Maya", pin?: string) {
 }
 
 export async function enterRoom(page: Page) {
-  await page.getByTestId("lobby-join").click();
+  // Retry until hydrated (a pre-hydration click on a freshly compiled route is lost).
+  await expect(async () => {
+    if (await page.getByTestId("lobby-join").isVisible()) await page.getByTestId("lobby-join").click({ timeout: 2000 });
+    await expect(page.getByTestId("room")).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 60_000 });
   await expect(page.locator("[data-testid=room][data-conn=connected]")).toBeVisible({ timeout: 20_000 });
 }
 
