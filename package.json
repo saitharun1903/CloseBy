@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Closeby — a private two-person watch party and hangout room.",
+  "description": "Closeby \u2014 a private two-person watch party and hangout room.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -16,7 +16,8 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test --trace off",
-    "livekit:dev": "livekit-server --dev --bind 127.0.0.1"
+    "livekit:dev": "livekit-server --dev --bind 127.0.0.1",
+    "vercel-build": "npm run db:migrate && next build"
   },
   "engines": {
     "node": ">=20.9"

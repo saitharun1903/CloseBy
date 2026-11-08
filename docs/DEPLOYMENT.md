@@ -14,10 +14,7 @@ Vercel (sign in with GitHub), Neon (Postgres), LiveKit Cloud, Upstash (Redis). V
 ### 3. Database (Neon)
 1. New project, region **AWS ap-south-1 (Mumbai)**.
 2. Copy both connection strings: the **pooled** one (host contains `-pooler`) for the app, and the **direct** one for migrations. Keep `?sslmode=require`.
-3. Apply the schema from your machine using the **direct** URL:
-   ```bash
-   DATABASE_URL="postgres://…direct-host…/neondb?sslmode=require" npm run db:migrate
-   ```
+3. Nothing to run by hand: every Vercel build runs `npm run db:migrate` first (the `vercel-build` script), using `DIRECT_URL` if set, otherwise `DATABASE_URL`. Already-applied migrations are skipped. Add both URLs to Vercel (see step 5).
 
 ### 4. Redis (Upstash, recommended)
 Create a Redis database in **ap-south-1** and copy the `rediss://…` URL. On Vercel your app runs on many short-lived instances, so in-memory rate limits wouldn't be shared without it.
@@ -31,7 +28,8 @@ Create a Redis database in **ap-south-1** and copy the `rediss://…` URL. On Ve
    | --- | --- |
    | `APP_URL` | `https://<project>.vercel.app` for now; switched to `https://closeby.tech` in step 7 |
    | `SESSION_SECRET` | output of `openssl rand -base64 48` |
-   | `DATABASE_URL` | the Neon pooled URL |
+   | `DATABASE_URL` | the Neon pooled URL (host contains `-pooler`) |
+   | `DIRECT_URL` | the Neon direct URL (used only for migrations during the build) |
    | `REDIS_URL` | the Upstash `rediss://` URL |
    | `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | from step 2 |
    | `LIVEKIT_API_URL` | `https://<project>.livekit.cloud` |
