@@ -37,3 +37,13 @@ describe("hyperbeam provider", () => {
     expect(s.profileId).toBeUndefined();
   });
 });
+
+describe("cleanApiKey", () => {
+  it("strips quotes, whitespace and a Bearer prefix", async () => {
+    const { cleanApiKey } = await import("@/server/hyperbeam");
+    expect(cleanApiKey('  "abc-123_XYZ"\n')).toBe("abc-123_XYZ");
+    expect(cleanApiKey("Bearer abc-123")).toBe("abc-123");
+    expect(cleanApiKey("'abc'")).toBe("abc");
+    expect(cleanApiKey("abc")).toBe("abc");
+  });
+});
