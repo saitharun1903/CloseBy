@@ -77,15 +77,15 @@ export function ChatPanel() {
               )}
               <div
                 className={cn(
-                  "max-w-[85%] whitespace-pre-wrap break-words rounded-[14px] px-3 py-2 text-[14px] leading-snug",
-                  m.mine ? "rounded-br-[5px] bg-ink-700 text-paper" : "rounded-bl-[5px] bg-ink-800 text-paper",
+                  "max-w-[85%] whitespace-pre-wrap break-words rounded-[18px] px-3.5 py-2 text-[14px] leading-snug",
+                  m.mine ? "rounded-br-[6px] bg-lamp text-white" : "rounded-bl-[6px] bg-white/[0.09] text-paper",
                 )}
               >
                 {links.map((p, j) =>
                   typeof p === "string" ? (
                     <span key={j}>{p}</span>
                   ) : (
-                    <a key={j} href={p.url} target="_blank" rel="noopener noreferrer nofollow" className="text-lamp underline decoration-lamp/40 underline-offset-2 hover:decoration-lamp">
+                    <a key={j} href={p.url} target="_blank" rel="noopener noreferrer nofollow" className="underline decoration-current/50 underline-offset-2">
                       {p.url}
                     </a>
                   ),
@@ -97,7 +97,7 @@ export function ChatPanel() {
                   href={u.url}
                   target="_blank"
                   rel="noopener noreferrer nofollow"
-                  className="mt-1 flex max-w-[85%] items-center gap-2 rounded-md border hairline bg-ink-850 px-2.5 py-2 text-[12px] text-paper-dim transition-colors hover:bg-ink-800 hover:text-paper"
+                  className="mt-1 flex max-w-[85%] items-center gap-2 rounded-xl bg-white/[0.06] px-3 py-2 text-[12px] text-paper-dim transition-colors hover:bg-white/10 hover:text-paper"
                 >
                   <ExternalLink className="size-3.5 shrink-0" />
                   <span className="truncate">Open {host(u.url)} in a new tab</span>
@@ -114,7 +114,7 @@ export function ChatPanel() {
           send();
         }}
       >
-        <div className="flex items-end gap-2 rounded-lg border hairline-strong bg-ink-900 p-1.5 pl-3 focus-within:border-lamp/50">
+        <div className="flex items-end gap-2 rounded-[22px] bg-white/[0.07] p-1.5 pl-4 focus-within:bg-white/[0.1]">
           <textarea
             ref={input}
             rows={1}
@@ -132,7 +132,7 @@ export function ChatPanel() {
             className="max-h-32 min-h-[34px] flex-1 resize-none bg-transparent py-1.5 text-[14px] text-paper outline-none placeholder:text-paper-ghost [field-sizing:content]"
             data-testid="chat-input"
           />
-          <button type="submit" disabled={!text.trim()} aria-label="Send" className="grid size-8 shrink-0 place-items-center rounded-md bg-lamp text-lamp-ink transition-opacity disabled:opacity-30">
+          <button type="submit" disabled={!text.trim()} aria-label="Send" className="grid size-8 shrink-0 place-items-center rounded-full bg-lamp text-white transition-opacity disabled:opacity-30">
             <ArrowUp className="size-4" />
           </button>
         </div>

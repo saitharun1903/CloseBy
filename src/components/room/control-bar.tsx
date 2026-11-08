@@ -1,7 +1,8 @@
 "use client";
-import { Track } from "livekit-client";
+import { Room, Track } from "livekit-client";
 import {
   Columns2,
+  Ellipsis,
   Headphones,
   Heart,
   LayoutGrid,
@@ -18,7 +19,7 @@ import {
   PictureInPicture2,
   Power,
   Rows2,
-  Settings2,
+  Tv,
   Video,
   VideoOff,
 } from "lucide-react";
@@ -31,25 +32,22 @@ import { Switch } from "@/components/ui/switch";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/cn";
 import { REACTIONS } from "@/lib/protocol";
-import { Room } from "livekit-client";
 import { useController, useLk } from "./context";
 import { MicMeter } from "./mic-meter";
 import { setSound, useRoom, type LayoutPref } from "./store";
 
 type CtlProps = {
   label: string;
+  /** Pressed/"on" state shown as a white button (e.g. sharing). */
   active?: boolean;
-  danger?: boolean;
+  /** Device turned off — FaceTime shows these as white with a dark glyph. */
   off?: boolean;
+  danger?: boolean;
   badge?: number | boolean;
   testId?: string;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-/** Round call-control button. forwardRef so Radix triggers can compose onto it. */
-export const CtlButtonBase = forwardRef<HTMLButtonElement, CtlProps>(function CtlButtonBase(
-  { label, active, danger, off, badge, className, testId, children, ...rest },
-  ref,
-) {
+export const CtlButtonBase = forwardRef<HTMLButtonElement, CtlProps>(function CtlButtonBase({ label, active, off, danger, badge, className, testId, children, ...rest }, ref) {
   return (
     <button
       ref={ref}
@@ -58,21 +56,19 @@ export const CtlButtonBase = forwardRef<HTMLButtonElement, CtlProps>(function Ct
       aria-pressed={active}
       data-testid={testId}
       className={cn(
-        "relative grid size-11 shrink-0 place-items-center rounded-full transition-[background-color,color,transform] duration-150 active:scale-95 disabled:opacity-40 sm:size-12 [&_svg]:size-5",
+        "relative grid size-11 shrink-0 place-items-center rounded-full transition-[background-color,color,transform] duration-150 active:scale-95 disabled:opacity-40 sm:size-[52px] [&_svg]:size-5 sm:[&_svg]:size-[22px]",
         danger
-          ? "bg-danger text-ink-950 hover:bg-[#e8806a]"
-          : off
-            ? "bg-[#3a2420] text-danger hover:bg-[#462a25]"
-            : active
-              ? "bg-paper text-ink-950 hover:bg-white"
-              : "bg-ink-800 text-paper hover:bg-ink-750 data-[state=open]:bg-ink-700",
+          ? "bg-danger text-white hover:bg-[#ff5a50]"
+          : off || active
+            ? "bg-white text-black hover:bg-white/90"
+            : "bg-white/[0.14] text-white hover:bg-white/[0.22] data-[state=open]:bg-white/[0.28]",
         className,
       )}
       {...rest}
     >
       {children}
       {badge ? (
-        <span className="absolute right-1.5 top-1.5 grid min-w-[16px] place-items-center rounded-full bg-lamp px-1 text-[10px] font-semibold leading-4 text-lamp-ink" aria-label={typeof badge === "number" ? `${badge} unread` : "New"}>
+        <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-lamp px-1 text-[10px] font-bold leading-[18px] text-white ring-2 ring-black/40" aria-label={typeof badge === "number" ? `${badge} unread` : "New"}>
           {typeof badge === "number" ? (badge > 9 ? "9+" : badge) : ""}
         </span>
       ) : null}
@@ -88,7 +84,6 @@ export function CtlButton({ shortcut, ...props }: CtlProps & { shortcut?: string
   );
 }
 
-/** A control that opens a popover, with a tooltip. */
 function PopoverCtl({ label, testId, children, content, open, onOpenChange, contentClass }: { label: string; testId: string; children: React.ReactNode; content: React.ReactNode; open?: boolean; onOpenChange?: (o: boolean) => void; contentClass?: string }) {
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
@@ -99,7 +94,7 @@ function PopoverCtl({ label, testId, children, content, open, onOpenChange, cont
           </CtlButtonBase>
         </PopoverTrigger>
       </Tooltip>
-      <PopoverContent side="top" className={contentClass}>
+      <PopoverContent side="top" sideOffset={14} className={contentClass}>
         {content}
       </PopoverContent>
     </Popover>
@@ -115,6 +110,7 @@ export function ControlBar({ immersive, onToggleImmersive, onLeave }: { immersiv
   const panel = useRoom((s) => s.panel);
   const unread = useRoom((s) => s.unread);
   const conn = useRoom((s) => s.conn);
+  const watching = useRoom((s) => !!s.playback.mediaId || s.browser.active);
   const [shareOk, setShareOk] = useState(false);
   useEffect(() => setShareOk(canShareScreen()), []);
 
@@ -123,7 +119,6 @@ export function ControlBar({ immersive, onToggleImmersive, onLeave }: { immersiv
   const sharing = lp.isScreenShareEnabled;
   const disabled = conn !== "connected";
 
-  // Shortcuts: ⌘/Ctrl+D mic, ⌘/Ctrl+E camera (common in call apps).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
@@ -142,45 +137,27 @@ export function ControlBar({ immersive, onToggleImmersive, onLeave }: { immersiv
   const togglePanel = (p: "chat" | "queue") => useRoom.setState((s) => ({ panel: s.panel === p ? null : p, unread: p === "chat" ? 0 : s.unread }));
 
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-2.5" role="toolbar" aria-label="Call controls">
-      <div className="flex items-center gap-2 sm:gap-2.5">
-        <div>
-          <CtlButton label={micOn ? "Mute microphone" : "Unmute microphone"} shortcut="⌘D" off={!micOn} onClick={() => void c.toggleMic()} disabled={disabled} testId="ctl-mic">
-            {micOn ? <Mic /> : <MicOff />}
-          </CtlButton>
-        </div>
-        <CtlButton label={camOn ? "Turn camera off" : "Turn camera on"} shortcut="⌘E" off={!camOn} onClick={() => void c.toggleCamera()} disabled={disabled} testId="ctl-cam">
-          {camOn ? <Video /> : <VideoOff />}
+    <div className="glass mx-auto flex w-fit max-w-full items-center gap-1.5 overflow-x-auto rounded-full p-1.5 scrollbar-quiet sm:gap-2.5 sm:p-2.5" role="toolbar" aria-label="Call controls">
+      <CtlButton label={micOn ? "Mute" : "Unmute"} shortcut="⌘D" off={!micOn} onClick={() => void c.toggleMic()} disabled={disabled} testId="ctl-mic">
+        {micOn ? <Mic /> : <MicOff />}
+      </CtlButton>
+      <CtlButton label={camOn ? "Turn camera off" : "Turn camera on"} shortcut="⌘E" off={!camOn} onClick={() => void c.toggleCamera()} disabled={disabled} testId="ctl-cam">
+        {camOn ? <Video /> : <VideoOff />}
+      </CtlButton>
+      <CtlButton label="Watch together" active={watching} onClick={() => useRoom.setState({ watchOpen: true })} testId="ctl-watch">
+        <Tv />
+      </CtlButton>
+      {shareOk && (
+        <CtlButton label={sharing ? "Stop sharing" : "Share screen"} active={sharing} onClick={() => void (sharing ? c.stopScreenShare() : c.startScreenShare())} disabled={disabled} testId="ctl-share" className="max-sm:hidden">
+          {sharing ? <MonitorOff /> : <MonitorUp />}
         </CtlButton>
-        {shareOk && (
-          <CtlButton
-            label={sharing ? "Stop sharing" : "Share a tab, window or screen"}
-            active={sharing}
-            onClick={() => void (sharing ? c.stopScreenShare() : c.startScreenShare())}
-            disabled={disabled}
-            testId="ctl-share"
-          >
-            {sharing ? <MonitorOff /> : <MonitorUp />}
-          </CtlButton>
-        )}
-      </div>
-
-      <span className="mx-0.5 h-6 w-px bg-[var(--line-strong)] max-sm:hidden" aria-hidden />
-
-      <div className="flex items-center gap-2 sm:gap-2.5">
-        <ReactionsButton />
-        <CtlButton label="Chat" active={panel === "chat"} badge={panel !== "chat" && unread > 0 ? unread : undefined} onClick={() => togglePanel("chat")} testId="ctl-chat">
-          <MessageSquare />
-        </CtlButton>
-        <CtlButton label="Watchlist" active={panel === "queue"} onClick={() => togglePanel("queue")} className="max-sm:hidden" testId="ctl-queue">
-          <ListVideo />
-        </CtlButton>
-        <LayoutButton immersive={immersive} onToggleImmersive={onToggleImmersive} />
-        <SettingsButton />
-      </div>
-
-      <span className="mx-0.5 h-6 w-px bg-[var(--line-strong)] max-sm:hidden" aria-hidden />
-      <CtlButton label="Leave" danger onClick={onLeave} testId="ctl-leave" className="w-14 sm:w-16">
+      )}
+      <ReactionsButton />
+      <CtlButton label="Chat" active={panel === "chat"} badge={panel !== "chat" && unread > 0 ? unread : undefined} onClick={() => togglePanel("chat")} testId="ctl-chat">
+        <MessageSquare />
+      </CtlButton>
+      <MoreButton immersive={immersive} onToggleImmersive={onToggleImmersive} onQueue={() => togglePanel("queue")} />
+      <CtlButton label="Leave" danger onClick={onLeave} testId="ctl-leave">
         <PhoneOff />
       </CtlButton>
     </div>
@@ -193,81 +170,30 @@ function ReactionsButton() {
     <PopoverCtl
       label="React"
       testId="ctl-react"
-      contentClass="flex gap-0.5 rounded-full p-1"
+      contentClass="flex gap-1 rounded-full p-1.5"
       content={REACTIONS.map((e) => (
-          <button
-            key={e}
-            onClick={() => c.sendReaction(e)}
-            className="grid size-10 place-items-center rounded-full text-[20px] transition-transform hover:scale-110 hover:bg-ink-750 active:scale-95"
-            aria-label={`Send ${e}`}
-          >
-            {e}
-          </button>
-        ))}
+        <button key={e} onClick={() => c.sendReaction(e)} className="grid size-11 place-items-center rounded-full text-[24px] transition-transform hover:scale-110 hover:bg-white/10 active:scale-95" aria-label={`Send ${e}`}>
+          {e}
+        </button>
+      ))}
     >
       <Heart />
     </PopoverCtl>
   );
 }
 
-const LAYOUTS: { id: LayoutPref; label: string; hint: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "auto", label: "Automatic", hint: "Follows what you’re doing", icon: LayoutGrid },
-  { id: "cinema", label: "Cinema", hint: "Film large, cameras floating", icon: PictureInPicture2 },
-  { id: "face", label: "Face to face", hint: "Two equal cameras", icon: Columns2 },
-  { id: "screen", label: "Screen share", hint: "Shared screen large", icon: MonitorUp },
-  { id: "compact", label: "Compact", hint: "Stacked, for small windows", icon: Rows2 },
+const LAYOUTS: { id: LayoutPref; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "auto", label: "Automatic", icon: LayoutGrid },
+  { id: "cinema", label: "Cinema", icon: PictureInPicture2 },
+  { id: "face", label: "Face to face", icon: Columns2 },
+  { id: "screen", label: "Screen share", icon: MonitorUp },
+  { id: "compact", label: "Compact", icon: Rows2 },
 ];
 
-function LayoutButton({ immersive, onToggleImmersive }: { immersive: boolean; onToggleImmersive: () => void }) {
-  const pref = useRoom((s) => s.layoutPref);
-  const hideSelf = useRoom((s) => s.sound.hideSelf);
-  return (
-    <PopoverCtl
-      label="Layout"
-      testId="ctl-layout"
-      contentClass="w-64 p-1.5"
-      content={
-      <>
-        <p className="px-2 pb-1.5 pt-1 text-[11px] uppercase tracking-wider text-paper-faint">Layout · only on your screen</p>
-        {LAYOUTS.map((l) => (
-          <PopoverClose asChild key={l.id}>
-            <button
-              onClick={() => useRoom.setState({ layoutPref: l.id })}
-              className={cn("flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-ink-750", pref === l.id && "bg-ink-800")}
-              aria-pressed={pref === l.id}
-              data-testid={`layout-${l.id}`}
-            >
-              <l.icon className={cn("size-4", pref === l.id ? "text-lamp" : "text-paper-dim")} />
-              <span>
-                <span className="block text-[13px] text-paper">{l.label}</span>
-                <span className="block text-[12px] text-paper-faint">{l.hint}</span>
-              </span>
-            </button>
-          </PopoverClose>
-        ))}
-        <div className="my-1.5 h-px bg-[var(--line)]" />
-        <PopoverClose asChild>
-          <button onClick={onToggleImmersive} className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-[13px] hover:bg-ink-750" data-testid="ctl-cinema-mode">
-            {immersive ? <Minimize className="size-4 text-paper-dim" /> : <Maximize className="size-4 text-paper-dim" />}
-            {immersive ? "Exit cinema mode" : "Cinema mode (full screen)"}
-            <kbd className="ml-auto font-mono text-[11px] text-paper-faint">F</kbd>
-          </button>
-        </PopoverClose>
-        <label className="flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-[13px] hover:bg-ink-750">
-          <span className="flex-1">Show my own camera</span>
-          <Switch checked={!hideSelf} onCheckedChange={(v) => setSound({ hideSelf: !v })} aria-label="Show my own camera" />
-        </label>
-      </>
-      }
-    >
-      <LayoutGrid />
-    </PopoverCtl>
-  );
-}
-
-function SettingsButton() {
+function MoreButton({ immersive, onToggleImmersive, onQueue }: { immersive: boolean; onToggleImmersive: () => void; onQueue: () => void }) {
   const c = useController();
   const room = useLk();
+  const pref = useRoom((s) => s.layoutPref);
   const sound = useRoom((s) => s.sound);
   const mediaMuted = useRoom((s) => s.mediaMuted);
   const partnerName = useRoom((s) => s.participants.find((p) => p.id !== s.me.id)?.displayName ?? "Partner");
@@ -289,44 +215,70 @@ function SettingsButton() {
 
   return (
     <PopoverCtl
-      label="Sound & devices"
-      testId="ctl-settings"
+      label="More"
+      testId="ctl-more"
       open={open}
       onOpenChange={setOpen}
-      contentClass="w-[320px] p-4"
+      contentClass="w-[340px] max-h-[70dvh] overflow-y-auto p-0 scrollbar-quiet"
       content={
-      <>
-        <p className="text-[11px] uppercase tracking-wider text-paper-faint">Volume · only affects what you hear</p>
-        <VolumeRow label="Film & shared audio" value={mediaMuted ? 0 : sound.mediaVolume} onChange={(v) => { setSound({ mediaVolume: v }); useRoom.setState({ mediaMuted: false }); }} testId="vol-media" />
-        <VolumeRow label={`${partnerName}’s voice`} value={sound.voiceVolume} onChange={(v) => setSound({ voiceVolume: v })} testId="vol-voice" />
-
-        <div className="my-4 h-px bg-[var(--line)]" />
-        <p className="text-[11px] uppercase tracking-wider text-paper-faint">Devices</p>
-        <div className="mt-2 space-y-2">
-          <DeviceRow
-            label="Microphone"
-            devices={devices.audioinput}
-            value={active("audioinput")}
-            onChange={(id) => void c.switchDevice("audioinput", id)}
-            extra={room.localParticipant.isMicrophoneEnabled ? <MicMeter track={micTrack} bars={4} /> : null}
-          />
-          <DeviceRow label="Camera" devices={devices.videoinput} value={active("videoinput")} onChange={(id) => void c.switchDevice("videoinput", id)} />
-          {sinkOk && devices.audiooutput.length > 0 && (
-            <DeviceRow label="Speaker" devices={devices.audiooutput} value={active("audiooutput")} onChange={(id) => void c.switchDevice("audiooutput", id)} />
-          )}
+        <div className="divide-y divide-white/[0.07]">
+          <section className="p-4">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-paper-faint">Volume · only what you hear</h3>
+            <VolumeRow label="Video & shared sound" value={mediaMuted ? 0 : sound.mediaVolume} onChange={(v) => { setSound({ mediaVolume: v }); useRoom.setState({ mediaMuted: false }); }} testId="vol-media" />
+            <VolumeRow label={`${partnerName}’s voice`} value={sound.voiceVolume} onChange={(v) => setSound({ voiceVolume: v })} testId="vol-voice" />
+          </section>
+          <section className="p-2">
+            <h3 className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-paper-faint">Layout</h3>
+            <div className="grid grid-cols-5 gap-1">
+              {LAYOUTS.map((l) => (
+                <PopoverClose asChild key={l.id}>
+                  <button
+                    onClick={() => useRoom.setState({ layoutPref: l.id })}
+                    className={cn("flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium hover:bg-white/10", pref === l.id ? "bg-white/[0.12] text-white" : "text-paper-dim")}
+                    aria-pressed={pref === l.id}
+                    data-testid={`layout-${l.id}`}
+                  >
+                    <l.icon className="size-5" />
+                    {l.label}
+                  </button>
+                </PopoverClose>
+              ))}
+            </div>
+            <PopoverClose asChild>
+              <button onClick={onToggleImmersive} className="mt-1 flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left text-[14px] hover:bg-white/10" data-testid="ctl-cinema-mode">
+                {immersive ? <Minimize className="size-5 text-paper-dim" /> : <Maximize className="size-5 text-paper-dim" />}
+                {immersive ? "Exit full screen" : "Full screen"}
+                <kbd className="ml-auto font-mono text-[11px] text-paper-faint">F</kbd>
+              </button>
+            </PopoverClose>
+            <PopoverClose asChild>
+              <button onClick={onQueue} className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left text-[14px] hover:bg-white/10" data-testid="ctl-queue">
+                <ListVideo className="size-5 text-paper-dim" /> Up next
+              </button>
+            </PopoverClose>
+            <label className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-[14px] hover:bg-white/10">
+              <span className="flex-1">Show my camera</span>
+              <Switch checked={!sound.hideSelf} onCheckedChange={(v) => setSound({ hideSelf: !v })} aria-label="Show my camera" />
+            </label>
+            <label className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-[14px] hover:bg-white/10">
+              <span className="flex-1">Mirror my camera</span>
+              <Switch checked={sound.mirrorSelf} onCheckedChange={(v) => setSound({ mirrorSelf: v })} aria-label="Mirror my camera" />
+            </label>
+          </section>
+          <section className="space-y-2 p-4">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-paper-faint">Devices</h3>
+            <DeviceRow label="Microphone" devices={devices.audioinput} value={active("audioinput")} onChange={(id) => void c.switchDevice("audioinput", id)} extra={room.localParticipant.isMicrophoneEnabled ? <MicMeter track={micTrack} bars={4} /> : null} />
+            <DeviceRow label="Camera" devices={devices.videoinput} value={active("videoinput")} onChange={(id) => void c.switchDevice("videoinput", id)} />
+            {sinkOk && devices.audiooutput.length > 0 && <DeviceRow label="Speaker" devices={devices.audiooutput} value={active("audiooutput")} onChange={(id) => void c.switchDevice("audiooutput", id)} />}
+            <p className="flex gap-2 pt-1 text-[12px] leading-snug text-paper-faint">
+              <Headphones className="mt-px size-3.5 shrink-0" />
+              Hearing an echo? Headphones fix it. Echo cancellation is on where your browser supports it.
+            </p>
+          </section>
         </div>
-        <label className="mt-3 flex items-center justify-between gap-3 text-[13px]">
-          Mirror my camera (only for me)
-          <Switch checked={sound.mirrorSelf} onCheckedChange={(v) => setSound({ mirrorSelf: v })} aria-label="Mirror my camera" />
-        </label>
-        <p className="mt-4 flex gap-2 text-[12px] leading-snug text-paper-faint">
-          <Headphones className="mt-px size-3.5 shrink-0" />
-          Hearing an echo? Headphones fix it reliably. Echo cancellation and noise suppression are on where your browser supports them.
-        </p>
-      </>
       }
     >
-      <Settings2 />
+      <Ellipsis />
     </PopoverCtl>
   );
 }
@@ -335,7 +287,7 @@ function VolumeRow({ label, value, onChange, testId }: { label: string; value: n
   return (
     <div className="mt-3" data-testid={testId}>
       <div className="mb-1 flex justify-between text-[13px]">
-        <span className="text-paper">{label}</span>
+        <span>{label}</span>
         <span className="font-mono text-[12px] text-paper-faint tabular">{Math.round(value * 100)}%</span>
       </div>
       <Slider aria-label={label} min={0} max={1} step={0.01} value={[value]} onValueChange={([v]) => onChange(v ?? 0)} />
@@ -346,13 +298,8 @@ function VolumeRow({ label, value, onChange, testId }: { label: string; value: n
 function DeviceRow({ label, devices, value, onChange, extra }: { label: string; devices: MediaDeviceInfo[]; value?: string; onChange: (id: string) => void; extra?: React.ReactNode }) {
   return (
     <label className="flex items-center gap-2 text-[13px]">
-      <span className="w-[76px] shrink-0 text-paper-dim">{label}</span>
-      <select
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={devices.length === 0}
-        className="h-8 min-w-0 flex-1 truncate rounded-sm border hairline-strong bg-ink-900 px-2 text-[13px] text-paper outline-none focus:border-lamp/60 disabled:opacity-50"
-      >
+      <span className="w-[80px] shrink-0 text-paper-dim">{label}</span>
+      <select value={value ?? ""} onChange={(e) => onChange(e.target.value)} disabled={devices.length === 0} className="h-9 min-w-0 flex-1 truncate rounded-lg bg-white/[0.08] px-2 text-[13px] outline-none focus:ring-2 focus:ring-lamp disabled:opacity-50">
         {devices.length === 0 && <option value="">Not available</option>}
         {devices.map((d, i) => (
           <option key={d.deviceId || i} value={d.deviceId}>
@@ -389,4 +336,3 @@ export function LeaveDialog({ open, onOpenChange, isHost, onLeave, onEnd }: { op
     </Dialog>
   );
 }
-

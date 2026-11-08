@@ -229,6 +229,8 @@ export class RoomController {
         participants: s.participants,
         queue: s.queue,
         inviteUrl: s.inviteUrl ?? cur.inviteUrl,
+        browser: s.browser,
+        features: s.features,
         playback: isNewer(s.playback, cur.playback) ? s.playback : cur.playback,
       });
     } catch (e) {
@@ -264,6 +266,9 @@ export class RoomController {
         break;
       case "participants":
         useRoom.setState({ participants: msg.participants });
+        break;
+      case "browser":
+        useRoom.setState({ browser: msg.browser });
         break;
       case "room-ended":
         useRoom.setState({
@@ -304,7 +309,25 @@ export class RoomController {
     }
   }
 
-  async addToQueue(body: { kind: "url"; url: string; title?: string } | { kind: "file"; fileName: string; fileSize: number; durationSec?: number | null }) {
+  async startBrowser(startUrl?: string) {
+    const r = await api<{ embedUrl: string; browser: import("@/lib/protocol").BrowserStateDTO }>(`/api/rooms/${this.roomId}/browser`, { body: { startUrl } });
+    useRoom.setState({ browser: r.browser, playback: { ...useRoom.getState().playback } });
+    void this.refreshState();
+    return r.embedUrl;
+  }
+
+  async getBrowserEmbed(): Promise<string | null> {
+    const r = await api<{ embedUrl: string | null; browser: import("@/lib/protocol").BrowserStateDTO }>(`/api/rooms/${this.roomId}/browser`);
+    useRoom.setState({ browser: r.browser });
+    return r.embedUrl;
+  }
+
+  async stopBrowser() {
+    const r = await api<{ browser: import("@/lib/protocol").BrowserStateDTO }>(`/api/rooms/${this.roomId}/browser`, { method: "DELETE" });
+    useRoom.setState({ browser: r.browser });
+  }
+
+  async addToQueue(body: { kind: "url"; url: string; title?: string } | { kind: "youtube"; url: string } | { kind: "file"; fileName: string; fileSize: number; durationSec?: number | null }) {
     const r = await api<{ item: QueueItemDTO; items: QueueItemDTO[] }>(`/api/rooms/${this.roomId}/queue`, { body });
     useRoom.setState({ queue: r.items });
     return r.item;

@@ -63,6 +63,21 @@ A paused player more than 250 ms off is re-seeked. Background tabs are re-synced
 
 **End of item.** Only the host advances to the next queue item (avoids double-advancing).
 
+## Watching together: sources
+
+| Source | How it plays | Sync |
+| --- | --- | --- |
+| Local file | Each person's browser decodes their own copy (`<video>` + blob URL). Only name/size/duration reach the server. | Rate nudge ±6 % + seek |
+| Direct video link | `<video>` with the URL (probed before adding) | Rate nudge ±6 % + seek |
+| YouTube | Official IFrame Player API from `youtube-nocookie.com`; video validated server-side via oEmbed (rejects private/non-embeddable) | Seek-only (YouTube supports only fixed speeds); clicks on the video itself are detected as user intents |
+| Shared browser | Hyperbeam cloud Chromium streamed to both; both can click/type; its audio follows the video volume | Inherent (it's one browser) |
+
+All synced sources go through one player-agnostic engine (`players/use-sync.ts`) behind a small `MediaAdapter` interface.
+
+**YouTube policy compliance** (YouTube API Services *Required Minimum Functionality*): nothing is drawn over the player — in YouTube mode the cameras move to a side rail and our controls sit below the video; the mini player keeps ≥ 200 px height; the site sends its origin as `Referer` (`Referrer-Policy: strict-origin-when-cross-origin`, as YouTube recommends); YouTube full-screen is disabled in favour of whole-room full screen so cameras stay visible.
+
+**Shared browser security & cost:** the Hyperbeam embed URL contains an access token, so it's stored AES-encrypted, returned only by the authenticated `GET /api/rooms/:id/browser`, and never broadcast. One session per room via Hyperbeam's `tag`; timeouts end it when unused; ending the room or starting a video stops it.
+
 ## Audio design
 
 - The film is decoded **locally on each device** (local file or direct URL). It never goes through WebRTC, so there's no duplicated playback or loop, and film volume/mute are purely local.
@@ -77,7 +92,8 @@ A paused player more than 250 ms off is re-seeked. Background tabs are re-synced
 | --- | --- | --- |
 | Room id, hashed/encrypted invite, hashed PIN, expiry | Postgres | Until expiry (default 12 h); ended rooms are emptied immediately and the tombstone removed within 24 h |
 | Display names, avatar hue, last-seen time | Postgres | Same |
-| Watchlist: titles, direct URLs, local-file **name/size/duration** only | Postgres | Same (deleted immediately when the host ends the room) |
+| Watchlist: titles, direct URLs, YouTube video ids/thumbnails, local-file **name/size/duration** only | Postgres | Same (deleted immediately when the host ends the room) |
+| Shared-browser session id + encrypted embed URL | Postgres (session itself at Hyperbeam) | Until the browser is closed or times out |
 | Playback position/state | Postgres | Same |
 | Rate-limit counters (keyed by IP or seat id) | Redis or memory | ≤ 15 min |
 | Chat | Only the two browsers' memory | Fades after 60 min; gone when the tab closes. A rejoining partner receives the other side's copy peer-to-peer |

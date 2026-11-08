@@ -5,8 +5,8 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   <input
     ref={ref}
     className={cn(
-      "h-11 w-full rounded-md border hairline-strong bg-ink-900 px-3.5 text-[15px] text-paper placeholder:text-paper-ghost",
-      "transition-[border-color,box-shadow] duration-150 outline-none focus:border-lamp/60 focus:shadow-[0_0_0_3px_rgb(227_166_100/0.14)]",
+      "h-12 w-full rounded-md border border-transparent bg-white/[0.07] px-4 text-[15px] text-paper placeholder:text-paper-faint",
+      "transition-[border-color,box-shadow] duration-150 outline-none focus:bg-white/[0.09] focus:border-lamp/70 focus:shadow-[0_0_0_4px_rgb(10_132_255/0.18)]",
       "aria-[invalid=true]:border-danger/70",
       className,
     )}
@@ -16,7 +16,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
 Input.displayName = "Input";
 
 export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
-  return <label className={cn("mb-1.5 block text-[13px] font-medium text-paper-dim", className)} {...props} />;
+  return <label className={cn("mb-2 block text-[13px] font-medium text-paper-dim", className)} {...props} />;
 }
 
 export function FieldError({ children, id }: { children?: React.ReactNode; id?: string }) {

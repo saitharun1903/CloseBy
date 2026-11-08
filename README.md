@@ -1,6 +1,6 @@
 # Closeby
 
-**Movie night, from two places.** A private room for exactly two people: live video and voice, a film that stays in sync on both screens, screen sharing, chat and reactions — with no accounts and nothing recorded.
+**Watch together. Feel like you're together.** A private room for exactly two people: HD video calling while you watch YouTube, your own films or direct video links in perfect sync — or browse any website together in a shared cloud browser. Chat, reactions, screen sharing; no accounts, nothing recorded.
 
 - Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · Radix primitives (shadcn-style) · Motion
 - LiveKit (WebRTC SFU) for camera, microphone and screen share
@@ -81,7 +81,8 @@ tests/unit · tests/integration · tests/e2e
 
 ## Honest limitations
 
-- **Streaming services (Netflix, Disney+, YouTube pages…) can't be played or controlled.** They use DRM and don't allow embedding/remote control. Use a local file each of you owns, a direct video-file link, or share a browser tab.
+- **DRM streaming services (Netflix, Prime Video, Disney+) can't be synced**, and usually won't play in the shared browser either. YouTube is built in; for other sites use the shared browser.
+- **YouTube ads** play independently for each person; whoever finishes an ad first is caught up automatically afterwards.
 - **Shared-screen audio depends on the browser.** Chrome/Edge can share *tab* audio everywhere and whole-screen audio on Windows/ChromeOS; window audio and Firefox/Safari screen audio aren't available. The UI always shows whether audio is actually being shared.
 - **Mobile browsers can't share their screen**, so the share button is hidden on phones. iOS Safari ignores programmatic volume, so the film-volume slider is hidden there (use hardware buttons).
 - **Echo cancellation is best-effort.** It's on, but speakers + a playing film can still leak into the mic on some devices. Headphones fix it; the app says so.

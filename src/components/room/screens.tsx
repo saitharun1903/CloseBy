@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 export function Screen({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
     <div className="relative flex min-h-dvh flex-col overflow-x-clip">
-      <div aria-hidden className="pointer-events-none absolute left-1/2 top-[-300px] h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(227_166_100/0.07),transparent)]" />
+      <div aria-hidden className="pointer-events-none absolute left-1/2 top-[-300px] h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(10_132_255/0.12),transparent)]" />
       <header className="relative px-5 pt-[calc(var(--safe-top)+20px)] sm:px-8">
         <Link href="/" aria-label="Closeby home" className="inline-block">
           <Logo />
@@ -22,8 +22,8 @@ export function MessageScreen({ title, body, action }: { title: string; body: st
   return (
     <Screen>
       <div className="animate-fade-in text-center" role="status">
-        <h1 className="font-display text-[40px] leading-[1.05] tracking-[-0.01em]">{title}</h1>
-        <p className="mx-auto mt-3 max-w-[360px] text-paper-dim">{body}</p>
+        <h1 className="text-[32px] font-semibold leading-[1.1] tracking-[-0.03em]">{title}</h1>
+        <p className="mx-auto mt-3 max-w-[380px] text-[16px] leading-relaxed text-paper-dim">{body}</p>
         <div className="mt-8 flex justify-center gap-3">
           {action ?? (
             <Button asChild>
@@ -42,7 +42,7 @@ export function LoadingScreen({ label }: { label: string }) {
       <div className="flex flex-col items-center gap-4">
         <div className="flex gap-1.5" aria-hidden>
           {[0, 1].map((i) => (
-            <span key={i} className="size-3 rounded-full border-2 border-paper/70 animate-breathe" style={{ animationDelay: `${i * 0.4}s` }} />
+            <span key={i} className="size-3.5 rounded-full border-2 border-white/80 animate-breathe" style={{ animationDelay: `${i * 0.4}s` }} />
           ))}
         </div>
         <p className="text-sm text-paper-dim">{label}</p>

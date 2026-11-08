@@ -98,16 +98,29 @@ export async function videoState(page: Page) {
   }));
 }
 
-/** Add the fixture film from the host's watchlist panel and have the guest pick their copy. */
+/** Open Watch together on a tab. */
+export async function openWatch(page: Page, tab: "youtube" | "browser" | "files") {
+  await page.getByTestId("ctl-watch").click();
+  await page.getByTestId(`watch-tab-${tab}`).click();
+}
+
+/** Add the fixture film via Watch together → Files and have the guest pick their copy. */
 export async function loadFilmForBoth(host: Page, guest: Page) {
-  await host.getByTestId("ctl-queue").click();
+  await openWatch(host, "files");
   await host.getByTestId("queue-file").setInputFiles(FILM);
   await expect(host.locator("[data-testid=player-video]")).toBeVisible();
   await expect(guest.getByTestId("file-prompt")).toBeVisible();
   await guest.getByTestId("file-input").setInputFiles(FILM);
   await expect(guest.locator("[data-testid=player-video]")).toBeVisible();
   for (const p of [host, guest]) await expect.poll(async () => (await videoState(p)).ready).toBeGreaterThanOrEqual(1);
-  await host.getByTestId("ctl-queue").click(); // close panel
+}
+
+/** Replace YouTube's IFrame API with a local stand-in (the test environment can't reach YouTube). */
+export async function fakeYouTube(page: Page) {
+  const fs = await import("node:fs");
+  const body = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "fake-youtube.js"), "utf8");
+  await page.route("https://www.youtube.com/iframe_api", (r) => r.fulfill({ contentType: "text/javascript", body }));
+  await page.route("https://i.ytimg.com/**", (r) => r.fulfill({ status: 204 }));
 }
 
 /**

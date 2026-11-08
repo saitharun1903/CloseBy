@@ -36,6 +36,8 @@ Create a Redis database in **ap-southeast-1 (Singapore)** and copy the `rediss:/
    | `NEXT_PUBLIC_LIVEKIT_URL` | `wss://<project>.livekit.cloud` |
    | `CRON_SECRET` | output of `openssl rand -hex 24` |
    | `ROOM_TTL_HOURS` | `12` (optional) |
+   | `YOUTUBE_API_KEY` | optional — enables YouTube search (see 7b) |
+   | `HYPERBEAM_API_KEY`, `HYPERBEAM_REGION` | optional — enables the shared browser (see 7b) |
 
    `NEXT_PUBLIC_LIVEKIT_URL` is baked into the build (it shapes the CSP), so **redeploy after changing it**.
 4. **Deploy.** `vercel.json` registers a daily cleanup cron; Vercel sends `Authorization: Bearer $CRON_SECRET` to `GET /api/cron/cleanup` automatically. Expired rooms are also purged whenever a new room is created.
@@ -59,6 +61,19 @@ Create a Redis database in **ap-southeast-1 (Singapore)** and copy the `rediss:/
 4. Wait until Vercel shows **Valid Configuration** (minutes to a few hours). The HTTPS certificate is issued automatically.
 5. Change `APP_URL` to `https://closeby.tech` and **redeploy**, so invite links use the real domain.
 6. Optional: in LiveKit Cloud **Settings → Webhooks**, add `https://closeby.tech/api/livekit/webhook` (signed with your API key) so abandoned guest seats free up faster.
+
+### 7b. Optional: YouTube search and the shared browser
+Both are optional; the app works without them and explains what's missing.
+
+**YouTube search** (pasting links works without this):
+1. console.cloud.google.com → create a project → **APIs & Services → Library → "YouTube Data API v3" → Enable**.
+2. **Credentials → Create credentials → API key**. Restrict it: *API restrictions → YouTube Data API v3*.
+3. Add it to Vercel as `YOUTUBE_API_KEY` and redeploy. The free quota (10,000 units/day) allows about 100 searches a day; each search costs 100 units.
+
+**Shared browser (Hyperbeam):**
+1. Sign up at hyperbeam.com and create an API key in the dashboard.
+2. Add `HYPERBEAM_API_KEY` (and `HYPERBEAM_REGION=AS` for India/Asia) to Vercel, then redeploy.
+3. Cost guards built into the app: a session starts only when someone clicks; one per room (Hyperbeam `tag`); it ends after 2 min with nobody connected, after 15 min idle, after 4 h at most, and when the room ends; starting a synced video closes it. Hyperbeam bills per participant-minute after its free monthly allowance — check their current pricing.
 
 ### 8. After launch
 - Create a room at https://closeby.tech, open the invite on your phone over mobile data, and make sure the call connects.

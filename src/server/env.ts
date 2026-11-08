@@ -12,6 +12,13 @@ const schema = z.object({
   LIVEKIT_API_URL: z.string().url(),
   NEXT_PUBLIC_LIVEKIT_URL: z.string().min(1),
   CRON_SECRET: z.string().optional(),
+  /** Optional: enables in-app YouTube search (YouTube Data API v3). Without it, people paste links. */
+  YOUTUBE_API_KEY: z.string().optional(),
+  /** Test seam: where to validate YouTube videos (defaults to YouTube's public oEmbed endpoint). */
+  YOUTUBE_OEMBED_URL: z.string().url().default("https://www.youtube.com/oembed"),
+  /** Optional: enables the shared cloud browser (Hyperbeam). */
+  HYPERBEAM_API_KEY: z.string().optional(),
+  HYPERBEAM_REGION: z.enum(["NA", "EU", "AS"]).default("AS"),
 });
 
 export type Env = z.infer<typeof schema>;

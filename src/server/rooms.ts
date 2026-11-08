@@ -5,7 +5,11 @@ import { decryptString, encryptString, hashPin, newRoomId, newSecretToken, safeE
 import type { DB } from "./db";
 import { participants, playbackStates, queueItems, rooms, type Participant, type PlaybackStateRow, type QueueItem, type Room } from "./db/schema";
 import { AppError } from "./errors";
+import type { BrowserProvider } from "./hyperbeam";
 import type { RealtimeGateway } from "./livekit";
+import type { YouTubeService } from "./youtube";
+import { parseYouTubeId } from "@/lib/youtube";
+import type { BrowserStateDTO } from "@/lib/protocol";
 import type { SessionClaims } from "./session";
 
 export interface RoomDeps {
@@ -15,6 +19,10 @@ export interface RoomDeps {
   appUrl: string;
   ttlHours: number;
   now?: () => number;
+  youtube?: YouTubeService;
+  /** null/undefined when the shared browser isn't configured (no HYPERBEAM_API_KEY). */
+  browser?: BrowserProvider | null;
+  browserRegion?: "NA" | "EU" | "AS";
 }
 
 /** A guest seat whose holder is not connected and hasn't been seen for this long can be reclaimed. */
@@ -34,6 +42,8 @@ export function toQueueDTO(q: QueueItem): QueueItemDTO {
     kind: q.kind,
     title: q.title,
     url: q.url,
+    externalId: q.externalId,
+    thumbnailUrl: q.thumbnailUrl,
     fileName: q.fileName,
     fileSize: q.fileSize,
     durationSec: q.durationSec,
@@ -236,6 +246,8 @@ export async function getRoomState(d: RoomDeps, claims: SessionClaims | null, ro
     playback: pb ? toPlaybackState(pb) : initialPlaybackState(clock(d)),
     queue: queue.map(toQueueDTO),
     serverNowMs: clock(d),
+    browser: browserState(room),
+    features: { youtubeSearch: !!d.youtube?.search, sharedBrowser: !!d.browser },
   };
   if (me.role === "host") dto.inviteUrl = inviteUrlFor(d.appUrl, room.id, decryptString(room.inviteTokenEnc, d.secret));
   return dto;
@@ -275,7 +287,7 @@ export async function leaveRoom(d: RoomDeps, claims: SessionClaims | null, roomI
 }
 
 export async function endRoom(d: RoomDeps, claims: SessionClaims | null, roomId: string) {
-  const { me } = await authorize(d, claims, roomId);
+  const { me, room } = await authorize(d, claims, roomId);
   if (me.role !== "host") throw new AppError("forbidden", "Only the person who created the room can end it.");
   const nowMs = clock(d);
   await d.db.transaction(async (tx) => {
@@ -285,6 +297,8 @@ export async function endRoom(d: RoomDeps, claims: SessionClaims | null, roomId:
     await tx.delete(queueItems).where(eq(queueItems.roomId, roomId));
     await tx.delete(playbackStates).where(eq(playbackStates.roomId, roomId));
   });
+  if (room.browserSessionId && d.browser) await d.browser.stop(room.browserSessionId);
+  await d.db.update(rooms).set({ browserSessionId: null, browserEmbedEnc: null, browserStartedAt: null, browserStartedBy: null }).where(eq(rooms.id, roomId));
   await d.gateway.broadcast(roomId, { kind: "room-ended" });
   await d.gateway.deleteRoom(roomId);
 }
@@ -339,6 +353,11 @@ export async function submitPlaybackIntent(
   });
 
   if (out.accepted) await d.gateway.broadcast(roomId, { kind: "playback", state: out.state });
+  // Starting a video closes the shared browser: one activity (and one bill) at a time.
+  if (out.accepted && body.intent.type === "load" && body.intent.mediaId) {
+    const [room] = await d.db.select().from(rooms).where(eq(rooms.id, roomId));
+    if (room?.browserSessionId) await stopBrowser(d, claims, roomId).catch(() => {});
+  }
   return { ...out, serverNowMs: nowMs };
 }
 
@@ -367,9 +386,17 @@ export async function addQueueItem(
   roomId: string,
   body:
     | { kind: "url"; url: string; title?: string }
+    | { kind: "youtube"; url: string }
     | { kind: "file"; fileName: string; fileSize: number; durationSec?: number | null; title?: string },
 ) {
   const { me } = await authorize(d, claims, roomId);
+  let yt: { id: string; title: string; thumbnailUrl: string } | null = null;
+  if (body.kind === "youtube") {
+    const id = parseYouTubeId(body.url);
+    if (!id) throw new AppError("bad_request", "That doesn’t look like a YouTube video link.");
+    if (!d.youtube) throw new AppError("media_unavailable", "YouTube isn’t available right now.");
+    yt = await d.youtube.lookup(id);
+  }
   const item = await d.db.transaction(async (tx) => {
     await tx.select({ id: rooms.id }).from(rooms).where(eq(rooms.id, roomId)).for("update");
     const [{ count, maxKey }] = (await tx
@@ -380,11 +407,22 @@ export async function addQueueItem(
     const [row] = await tx
       .insert(queueItems)
       .values(
-        body.kind === "url"
-          ? { roomId, kind: "url", url: body.url, title: body.title ?? titleFromUrl(body.url), sortKey: (maxKey ?? 0) + 1, addedBy: me.id }
+        body.kind === "youtube"
+          ? {
+              roomId,
+              kind: "youtube" as const,
+              externalId: yt!.id,
+              url: `https://www.youtube.com/watch?v=${yt!.id}`,
+              title: yt!.title,
+              thumbnailUrl: yt!.thumbnailUrl,
+              sortKey: (maxKey ?? 0) + 1,
+              addedBy: me.id,
+            }
+          : body.kind === "url"
+          ? { roomId, kind: "url" as const, url: body.url, title: body.title ?? titleFromUrl(body.url), sortKey: (maxKey ?? 0) + 1, addedBy: me.id }
           : {
               roomId,
-              kind: "file",
+              kind: "file" as const,
               fileName: body.fileName,
               fileSize: body.fileSize,
               durationSec: body.durationSec ?? null,
@@ -435,10 +473,11 @@ export async function reorderQueue(d: RoomDeps, claims: SessionClaims | null, ro
 export async function cleanupExpiredRooms(d: RoomDeps) {
   const nowMs = clock(d);
   const expired = await d.db
-    .select({ id: rooms.id })
+    .select({ id: rooms.id, browserSessionId: rooms.browserSessionId })
     .from(rooms)
     .where(or(lt(rooms.expiresAt, new Date(nowMs)), and(eq(rooms.status, "ended"), lt(rooms.endedAt, new Date(nowMs - 24 * 3600_000)))));
   for (const r of expired) {
+    if (r.browserSessionId && d.browser) await d.browser.stop(r.browserSessionId);
     await d.gateway.broadcast(r.id, { kind: "room-ended" });
     await d.gateway.deleteRoom(r.id);
   }
@@ -446,4 +485,71 @@ export async function cleanupExpiredRooms(d: RoomDeps) {
     await d.db.delete(rooms).where(inArray(rooms.id, expired.map((r) => r.id)));
   }
   return { deleted: expired.length };
+}
+
+/* ─────────────────────────── shared browser ─────────────────────────── */
+
+export function browserState(room: Room): BrowserStateDTO {
+  return {
+    active: !!room.browserSessionId,
+    startedBy: room.browserStartedBy,
+    startedAt: room.browserStartedAt?.toISOString() ?? null,
+  };
+}
+
+/**
+ * Start (or join) the room's shared browser. Starting it stops any synced
+ * video so there's one thing on screen — and one bill — at a time.
+ */
+export async function startBrowser(d: RoomDeps, claims: SessionClaims | null, roomId: string, startUrl?: string) {
+  const { room, me } = await authorize(d, claims, roomId);
+  if (!d.browser) throw new AppError("media_unavailable", "The shared browser isn’t enabled on this server.");
+  if (room.browserSessionId && room.browserEmbedEnc) {
+    return { embedUrl: decryptString(room.browserEmbedEnc, d.secret), browser: browserState(room) };
+  }
+  const session = await d.browser.start({ roomId, startUrl: startUrl ?? "https://www.youtube.com", region: d.browserRegion ?? "AS" });
+  const nowMs = clock(d);
+  const [updated] = await d.db
+    .update(rooms)
+    .set({
+      browserSessionId: session.sessionId,
+      browserEmbedEnc: encryptString(session.embedUrl, d.secret),
+      browserStartedAt: new Date(nowMs),
+      browserStartedBy: me.id,
+    })
+    .where(eq(rooms.id, roomId))
+    .returning();
+  const state = browserState(updated!);
+  // One activity at a time: unload any synced video.
+  const [pb] = await d.db.select().from(playbackStates).where(eq(playbackStates.roomId, roomId));
+  if (pb?.mediaId) {
+    await submitPlaybackIntent(d, claims, roomId, { baseVersion: pb.version, intent: { type: "load", mediaId: null } }).catch(() => {});
+  }
+  await d.gateway.broadcast(roomId, { kind: "browser", browser: state });
+  return { embedUrl: session.embedUrl, browser: state };
+}
+
+/** The embed URL is a bearer credential: only handed to authorized members, never broadcast. */
+export async function getBrowser(d: RoomDeps, claims: SessionClaims | null, roomId: string) {
+  const { room } = await authorize(d, claims, roomId);
+  return { embedUrl: room.browserEmbedEnc ? decryptString(room.browserEmbedEnc, d.secret) : null, browser: browserState(room) };
+}
+
+export async function stopBrowser(d: RoomDeps, claims: SessionClaims | null, roomId: string) {
+  const { room } = await authorize(d, claims, roomId);
+  if (room.browserSessionId && d.browser) await d.browser.stop(room.browserSessionId);
+  const [updated] = await d.db
+    .update(rooms)
+    .set({ browserSessionId: null, browserEmbedEnc: null, browserStartedAt: null, browserStartedBy: null })
+    .where(eq(rooms.id, roomId))
+    .returning();
+  const state = browserState(updated!);
+  await d.gateway.broadcast(roomId, { kind: "browser", browser: state });
+  return { browser: state };
+}
+
+export async function searchYouTube(d: RoomDeps, claims: SessionClaims | null, roomId: string, q: string) {
+  await authorize(d, claims, roomId);
+  if (!d.youtube?.search) throw new AppError("media_unavailable", "Search isn’t enabled. Paste a YouTube link instead.");
+  return { results: await d.youtube.search(q) };
 }

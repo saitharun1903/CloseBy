@@ -8,7 +8,6 @@ import { loadDevicePrefs, saveDevicePrefs } from "@/lib/prefs";
 import type { RoomStateDTO } from "@/lib/protocol";
 import type { InitialMedia } from "./controller";
 import { MicMeter } from "./mic-meter";
-import { Screen } from "./screens";
 
 type DevState = { status: "off" | "starting" | "on" | "error"; error?: string };
 
@@ -129,107 +128,115 @@ export function Lobby({ state, onJoin }: { state: RoomStateDTO; onJoin: (m: Init
 
   const partner = state.participants.find((p) => p.id !== state.me.id);
   const heading =
-    state.me.role === "host" ? (partner ? `${partner.displayName} has a seat` : "Your room is ready") : `You’re joining ${partner?.displayName ?? "the room"}`;
+    state.me.role === "host" ? (partner ? `Ready to rejoin ${partner.displayName}?` : "Your room is ready") : `Join ${partner?.displayName ?? "the room"}`;
 
   return (
-    <Screen wide>
-      <div className="grid animate-fade-in items-center gap-8 md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] md:gap-12">
-        {/* Preview */}
-        <div className="relative">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-ink-850 shadow-float ring-1 ring-[var(--line)] sm:aspect-[16/10]">
-            {video && camOn ? (
-              <video ref={videoEl} muted playsInline autoPlay className="h-full w-full -scale-x-100 object-cover" aria-label="Your camera preview" />
-            ) : (
-              <div className="grid h-full place-items-center p-6 text-center">
-                <div className="max-w-[320px]">
-                  <span
-                    className="mx-auto grid size-20 place-items-center rounded-full font-display text-[36px] text-paper"
-                    style={{ background: `hsl(${state.me.avatarHue} 22% 26%)` }}
-                  >
-                    {state.me.displayName.slice(0, 1).toUpperCase()}
-                  </span>
-                  <p className="mt-4 text-sm text-paper-dim">
-                    {cam.status === "starting" ? "Starting camera…" : cam.status === "error" ? cam.error : "Camera is off"}
-                  </p>
-                  {cam.status === "error" && (
-                    <Button size="sm" variant="secondary" className="mt-3" onClick={() => void startCam(sel.videoinput)}>
-                      <RefreshCw /> Try again
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-            <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-3 bg-gradient-to-t from-black/55 to-transparent p-4 pt-10">
-              <RoundToggle on={micOn && mic.status === "on"} disabled={mic.status !== "on"} onClick={() => setMicOn((v) => !v)} label={micOn ? "Turn microphone off" : "Turn microphone on"}>
-                {micOn && mic.status === "on" ? <Mic /> : <MicOff />}
-              </RoundToggle>
-              <RoundToggle on={camOn && cam.status === "on"} onClick={toggleCam} label={camOn ? "Turn camera off" : "Turn camera on"}>
-                {camOn && cam.status !== "error" ? <Video /> : <VideoOff />}
-              </RoundToggle>
-            </div>
-            <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-black/45 px-2.5 py-1 text-[12px] text-white/90 backdrop-blur">
-              {mic.status === "on" && micOn ? <MicMeter track={audio?.mediaStreamTrack} /> : <MicOff className="size-3.5" />}
-              <span>{state.me.displayName}</span>
+    <div className="fixed inset-0 overflow-hidden bg-black">
+      {/* Full-screen camera preview */}
+      <div className="absolute inset-0">
+        {video && camOn ? (
+          <video ref={videoEl} muted playsInline autoPlay className="h-full w-full -scale-x-100 object-cover" aria-label="Your camera preview" />
+        ) : (
+          <div className="grid h-full place-items-center" style={{ background: `radial-gradient(90% 70% at 50% 30%, hsl(${state.me.avatarHue} 35% 18%), #000)` }}>
+            <div className="max-w-[320px] px-6 text-center">
+              <span className="mx-auto grid size-24 place-items-center rounded-full text-[40px] font-semibold text-white" style={{ background: `hsl(${state.me.avatarHue} 45% 40%)` }}>
+                {state.me.displayName.slice(0, 1).toUpperCase()}
+              </span>
+              <p className="mt-4 text-[14px] text-white/70">{cam.status === "starting" ? "Starting camera…" : cam.status === "error" ? cam.error : "Camera is off"}</p>
+              {cam.status === "error" && (
+                <Button size="sm" variant="secondary" className="mt-3" onClick={() => void startCam(sel.videoinput)}>
+                  <RefreshCw /> Try again
+                </Button>
+              )}
             </div>
           </div>
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/40" />
+      </div>
+
+      <header className="absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-[calc(var(--safe-top)+18px)]">
+        <a href="/" aria-label="Closeby home" className="text-white">
+          <span className="inline-flex items-center gap-2">
+            <svg viewBox="0 0 40 24" aria-hidden className="h-5 w-auto">
+              <circle cx="13" cy="12" r="9.25" fill="none" stroke="currentColor" strokeWidth="2.4" />
+              <circle cx="27" cy="12" r="9.25" fill="none" stroke="currentColor" strokeWidth="2.4" />
+              <path d="M20 5.95a9.25 9.25 0 0 1 0 12.1a9.25 9.25 0 0 1 0-12.1z" fill="var(--color-ok)" />
+            </svg>
+            <span className="text-[17px] font-semibold tracking-[-0.03em]">Closeby</span>
+          </span>
+        </a>
+        <span className="glass flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] font-medium text-white">
+          {mic.status === "on" && micOn ? <MicMeter track={audio?.mediaStreamTrack} /> : <MicOff className="size-3.5" />}
+          {state.me.displayName}
+        </span>
+      </header>
+
+      {/* Bottom card */}
+      <div className="absolute inset-x-0 bottom-0 flex justify-center px-4 pb-[calc(var(--safe-bottom)+20px)]">
+        <div className="glass w-full max-w-[520px] animate-fade-in rounded-[28px] p-6 sm:p-7">
+          <h1 className="text-center text-[24px] font-semibold tracking-[-0.025em] text-white sm:text-[28px]">{heading}</h1>
+          <p className="mt-1 text-center text-[14px] text-white/65">Nobody sees or hears you until you join.</p>
+
+          <div className="mt-5 flex items-center justify-center gap-3">
+            <RoundToggle on={micOn && mic.status === "on"} disabled={mic.status !== "on"} onClick={() => setMicOn((v) => !v)} label={micOn ? "Turn microphone off" : "Turn microphone on"}>
+              {micOn && mic.status === "on" ? <Mic /> : <MicOff />}
+            </RoundToggle>
+            <RoundToggle on={camOn && cam.status === "on"} onClick={toggleCam} label={camOn ? "Turn camera off" : "Turn camera on"}>
+              {camOn && cam.status !== "error" ? <Video /> : <VideoOff />}
+            </RoundToggle>
+          </div>
+
           {mic.status === "error" && (
-            <p role="alert" className="mt-3 flex items-start gap-2 text-[13px] text-danger">
-              <MicOff className="mt-0.5 size-3.5 shrink-0" />
-              <span>
-                {mic.error}{" "}
-                <button className="underline underline-offset-2 hover:text-paper" onClick={() => void startMic(sel.audioinput)}>
-                  Try again
-                </button>
-              </span>
+            <p role="alert" className="mt-4 text-center text-[13px] text-[#ffb4ae]">
+              {mic.error}{" "}
+              <button className="font-semibold underline underline-offset-2" onClick={() => void startMic(sel.audioinput)}>
+                Try again
+              </button>
             </p>
           )}
-        </div>
 
-        {/* Setup */}
-        <div>
-          <h1 className="font-display text-[40px] leading-[1.04] tracking-[-0.015em]">{heading}</h1>
-          <p className="mt-2 text-paper-dim">Check how you look and sound. Nobody sees or hears you until you join.</p>
+          <details className="group mt-5 rounded-2xl bg-white/[0.06] px-4 py-3 text-[13px] text-white/80">
+            <summary className="flex cursor-pointer list-none items-center justify-between font-medium">
+              Camera, microphone & speaker
+              <span className="text-white/50 transition-transform group-open:rotate-180">⌄</span>
+            </summary>
+            <div className="mt-3 space-y-2.5">
+              <DeviceSelect
+                label="Microphone"
+                devices={devices.audioinput}
+                value={sel.audioinput}
+                disabled={mic.status !== "on"}
+                onChange={(id) => {
+                  setSel((s) => ({ ...s, audioinput: id }));
+                  void startMic(id);
+                }}
+              />
+              <DeviceSelect
+                label="Camera"
+                devices={devices.videoinput}
+                value={sel.videoinput}
+                disabled={!camOn || cam.status !== "on"}
+                onChange={(id) => {
+                  setSel((s) => ({ ...s, videoinput: id }));
+                  void startCam(id);
+                }}
+              />
+              {devices.audiooutput.length > 0 && "setSinkId" in HTMLMediaElement.prototype && (
+                <DeviceSelect label="Speaker" devices={devices.audiooutput} value={sel.audiooutput} onChange={(id) => setSel((s) => ({ ...s, audiooutput: id }))} />
+              )}
+              <p className="flex items-start gap-2 pt-1 text-[12px] leading-relaxed text-white/55">
+                <Headphones className="mt-0.5 size-3.5 shrink-0" /> Headphones are the surest way to avoid echo while something plays.
+              </p>
+            </div>
+          </details>
 
-          <div className="mt-7 space-y-3">
-            <DeviceSelect
-              label="Microphone"
-              devices={devices.audioinput}
-              value={sel.audioinput}
-              disabled={mic.status !== "on"}
-              onChange={(id) => {
-                setSel((s) => ({ ...s, audioinput: id }));
-                void startMic(id);
-              }}
-            />
-            <DeviceSelect
-              label="Camera"
-              devices={devices.videoinput}
-              value={sel.videoinput}
-              disabled={!camOn || cam.status !== "on"}
-              onChange={(id) => {
-                setSel((s) => ({ ...s, videoinput: id }));
-                void startCam(id);
-              }}
-            />
-            {devices.audiooutput.length > 0 && "setSinkId" in HTMLMediaElement.prototype && (
-              <DeviceSelect label="Speaker" devices={devices.audiooutput} value={sel.audiooutput} onChange={(id) => setSel((s) => ({ ...s, audiooutput: id }))} />
-            )}
-          </div>
-
-          <p className="mt-5 flex items-start gap-2.5 text-[13px] leading-relaxed text-paper-faint">
-            <Headphones className="mt-0.5 size-4 shrink-0" />
-            Headphones are the surest way to avoid echo while a film is playing. Echo cancellation is on, but it can’t catch everything on every device.
-          </p>
-
-          <Button variant="primary" size="lg" className="mt-7 w-full" onClick={join} disabled={mic.status === "starting" || cam.status === "starting"} data-testid="lobby-join">
-            Join room <ArrowRight />
+          <Button variant="primary" size="lg" className="mt-5 w-full" onClick={join} disabled={mic.status === "starting" || cam.status === "starting"} data-testid="lobby-join">
+            Join <ArrowRight />
           </Button>
-          {mic.status === "error" && cam.status !== "on" && (
-            <p className="mt-2 text-center text-[12px] text-paper-faint">You can still join to watch and chat without camera or mic.</p>
-          )}
+          {mic.status === "error" && cam.status !== "on" && <p className="mt-2 text-center text-[12px] text-white/50">You can still join to watch and chat without camera or mic.</p>}
         </div>
       </div>
-    </Screen>
+    </div>
   );
 }
 
@@ -242,8 +249,8 @@ function RoundToggle({ on, disabled, onClick, label, children }: { on: boolean; 
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "grid size-12 place-items-center rounded-full transition-colors [&_svg]:size-5",
-        on ? "bg-white/15 text-white hover:bg-white/25" : "bg-danger text-ink-950 hover:bg-[#e8806a]",
+        "grid size-14 place-items-center rounded-full transition-colors [&_svg]:size-6",
+        on ? "bg-white/[0.16] text-white hover:bg-white/25" : "bg-white text-black hover:bg-white/90",
         disabled && "opacity-50",
       )}
     >
@@ -268,7 +275,7 @@ function DeviceSelect({
   const id = `dev-${label.toLowerCase()}`;
   return (
     <div className="flex items-center gap-3">
-      <label htmlFor={id} className="w-24 shrink-0 text-[13px] text-paper-dim">
+      <label htmlFor={id} className="w-24 shrink-0 text-[13px] text-white/60">
         {label}
       </label>
       <select
@@ -276,7 +283,7 @@ function DeviceSelect({
         disabled={disabled || devices.length === 0}
         value={value && devices.some((d) => d.deviceId === value) ? value : (devices[0]?.deviceId ?? "")}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 min-w-0 flex-1 truncate rounded-md border hairline-strong bg-ink-900 px-3 text-sm text-paper outline-none focus:border-lamp/60 disabled:opacity-50"
+        className="h-9 min-w-0 flex-1 truncate rounded-lg bg-white/[0.08] px-3 text-[13px] text-white outline-none focus:ring-2 focus:ring-lamp disabled:opacity-50"
       >
         {devices.length === 0 && <option value="">Not available</option>}
         {devices.map((d, i) => (

@@ -42,6 +42,8 @@ Legend: **✅ Auto** — implemented and covered by automated tests that were ru
 | Local subtitles (.srt/.vtt), lifted above controls | ✅ Impl (converter ✅ Auto) |
 | Independent film volume, film mute, partner voice volume; mic independent | ✅ Auto |
 | Shared queue: add / remove / reorder / play next / now-playing / host auto-advance | ✅ Auto (auto-advance ✅ Impl) |
+| **YouTube built in**: paste a link (or search, with `YOUTUBE_API_KEY`), synced play/pause/seek/speed, policy-compliant layout | ✅ Auto against a stand-in YouTube player · 🧪 Manual with real YouTube |
+| **Shared cloud browser (Hyperbeam)**: start/join/close, one per room, cost timeouts, token never broadcast | ✅ Auto (server + UI when disabled) · 🧪 Manual once `HYPERBEAM_API_KEY` is set |
 | Streaming-service integrations (DRM) | ⏳ Not possible without licensed provider SDKs; deliberately unsupported |
 
 ## Screen sharing & browsing
@@ -53,7 +55,7 @@ Legend: **✅ Auto** — implemented and covered by automated tests that were ru
 | Hidden on mobile (unsupported) | ✅ Impl |
 | Share links in chat → each opens in own browser (`noopener`) | ✅ Auto |
 | Point at things on the shared stage (double-click ping) | ✅ Impl |
-| Co-browsing / remote control of third-party sites | ⏳ Not built — browsers' same-origin isolation forbids it; would need a separate, secured virtual-browser service |
+| Co-browsing of any website | ✅ via the Hyperbeam shared browser (needs an API key) — DRM sites (Netflix, Prime Video, Disney+) generally won't play |
 
 ## Chat, reactions, layouts
 | Feature | Status |

@@ -13,7 +13,7 @@ import {
 
 export const roomStatus = pgEnum("room_status", ["open", "ended"]);
 export const participantRole = pgEnum("participant_role", ["host", "guest"]);
-export const mediaKind = pgEnum("media_kind", ["file", "url"]);
+export const mediaKind = pgEnum("media_kind", ["file", "url", "youtube"]);
 export const playbackStatus = pgEnum("playback_status", ["playing", "paused"]);
 
 /**
@@ -34,6 +34,11 @@ export const rooms = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     endedAt: timestamp("ended_at", { withTimezone: true }),
+    /** Shared cloud browser (Hyperbeam). The embed URL carries an access token, so it is encrypted at rest. */
+    browserSessionId: text("browser_session_id"),
+    browserEmbedEnc: text("browser_embed_enc"),
+    browserStartedAt: timestamp("browser_started_at", { withTimezone: true }),
+    browserStartedBy: uuid("browser_started_by"),
   },
   (t) => [index("rooms_expires_at_idx").on(t.expiresAt)],
 );
@@ -67,6 +72,9 @@ export const queueItems = pgTable(
     kind: mediaKind("kind").notNull(),
     title: text("title").notNull(),
     url: text("url"),
+    /** YouTube video id for kind = "youtube". */
+    externalId: text("external_id"),
+    thumbnailUrl: text("thumbnail_url"),
     fileName: text("file_name"),
     fileSize: bigint("file_size", { mode: "number" }),
     durationSec: doublePrecision("duration_sec"),

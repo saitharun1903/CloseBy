@@ -13,7 +13,7 @@ interface TileState {
   minimized: boolean;
 }
 
-const MARGIN = 12;
+const MARGIN = 16;
 const GAP = 10;
 const ASPECT = 3 / 4; // height / width
 const PILL_H = 36;
@@ -164,7 +164,7 @@ export function FloatingTiles({
               role="group"
               aria-label={id === "remote" ? `${remoteName ?? "Partner"}’s camera` : "Your camera"}
               className={cn(
-                "group/tile pointer-events-auto absolute left-0 top-0 touch-none select-none overflow-hidden rounded-lg shadow-float",
+                "group/tile pointer-events-auto absolute left-0 top-0 touch-none select-none overflow-hidden rounded-2xl shadow-float ring-1 ring-white/10",
                 dragging ? "cursor-grabbing transition-none" : "cursor-grab transition-[transform,width,height] duration-300 ease-[cubic-bezier(.25,1,.5,1)]",
               )}
               style={{ transform: `translate3d(${x}px, ${y}px, 0)`, width: p.w, height: p.h }}
@@ -174,7 +174,7 @@ export function FloatingTiles({
                 <MiniPill participant={participant} name={id === "remote" ? remoteName : "You"} onRestore={() => setTiles((s) => ({ ...s, [id]: { ...s[id], minimized: false } }))} />
               ) : (
                 <>
-                  <ParticipantTile participant={participant} isLocal={id === "local"} name={id === "remote" ? remoteName : undefined} className="rounded-lg" />
+                  <ParticipantTile participant={participant} isLocal={id === "local"} name={id === "remote" ? remoteName : undefined} className="rounded-2xl" compact />
                   <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover/tile:opacity-100 [@media(hover:none)]:opacity-100">
                     {visible.length === 2 && (
                       <TileButton label="Swap camera positions" onClick={swap}>
@@ -220,7 +220,7 @@ function TileButton({ label, onClick, children }: { label: string; onClick: () =
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="grid size-7 place-items-center rounded-md bg-black/55 text-white backdrop-blur hover:bg-black/75 [&_svg]:size-3.5"
+      className="grid size-7 place-items-center rounded-full bg-black/50 text-white backdrop-blur-md hover:bg-black/70 [&_svg]:size-3.5"
     >
       {children}
     </button>

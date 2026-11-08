@@ -24,6 +24,8 @@ export const RULES = {
   token: { limit: 30, windowSec: 60 },
   playback: { limit: 40, windowSec: 10 },
   queue: { limit: 30, windowSec: 60 },
+  browser: { limit: 6, windowSec: 600 },
+  search: { limit: 30, windowSec: 60 },
   generic: { limit: 120, windowSec: 60 },
 } satisfies Record<string, RateRule>;
 
