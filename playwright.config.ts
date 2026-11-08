@@ -55,6 +55,8 @@ export default defineConfig({
         NEXT_PUBLIC_LIVEKIT_URL: "ws://127.0.0.1:7880",
         SESSION_SECRET: "e2e-session-secret-that-is-long-enough-000000",
         REDIS_URL: "",
+        // Tests create far more rooms from one IP than any person would.
+        RATE_LIMIT_SCALE: "50",
       },
     },
     {

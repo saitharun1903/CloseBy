@@ -1,6 +1,6 @@
 "use client";
 import { Captions, FolderOpen, Gauge, Loader, Maximize2, Pause, Play, TriangleExclamationPoint, Volume1, Volume2, VolumeX } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/components/toaster";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
@@ -33,10 +33,20 @@ function canSetVolume() {
 }
 
 function useSource(item: QueueItemDTO | null, file: File | undefined) {
-  const url = useMemo(() => (item?.kind === "file" && file ? URL.createObjectURL(file) : null), [item?.kind, file]);
-  useEffect(() => () => void (url && URL.revokeObjectURL(url)), [url]);
+  // Created and revoked in the same effect so StrictMode's double-mount can't leave a dead URL.
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const isFile = item?.kind === "file";
+  useEffect(() => {
+    if (!isFile || !file) {
+      setBlobUrl(null);
+      return;
+    }
+    const u = URL.createObjectURL(file);
+    setBlobUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [isFile, file]);
   if (!item) return null;
-  return item.kind === "url" ? item.url : url;
+  return item.kind === "url" ? item.url : blobUrl;
 }
 
 export function SyncedPlayer({ mode, onExpand }: { mode: "main" | "mini"; onExpand: () => void }) {

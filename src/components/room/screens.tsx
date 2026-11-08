@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 /** Calm full-page frame for pre-room and end states. */
 export function Screen({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
-    <div className="relative flex min-h-dvh flex-col">
+    <div className="relative flex min-h-dvh flex-col overflow-x-clip">
       <div aria-hidden className="pointer-events-none absolute left-1/2 top-[-300px] h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(227_166_100/0.07),transparent)]" />
       <header className="relative px-5 pt-[calc(var(--safe-top)+20px)] sm:px-8">
         <Link href="/" aria-label="Closeby home" className="inline-block">

@@ -1,0 +1,23 @@
+# Local development dependencies. The app itself runs with `npm run dev`.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: closeby
+      POSTGRES_PASSWORD: closeby
+      POSTGRES_DB: closeby
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  livekit:
+    image: livekit/livekit-server:v1.13
+    # --dev uses API key "devkey" / secret "secret". Never use --dev in production.
+    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+volumes:
+  pgdata:

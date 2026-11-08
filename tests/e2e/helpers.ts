@@ -14,7 +14,11 @@ export async function newPerson(browser: Browser, opts: { viewport?: { width: nu
 
 export async function createRoom(page: Page, name = "Maya", pin?: string) {
   await page.goto("/");
-  await page.getByTestId("create-room").click();
+  // Retry until hydrated: a click before React attaches handlers does nothing.
+  await expect(async () => {
+    await page.getByTestId("create-room").click();
+    await expect(page.getByLabel("Your name")).toBeVisible({ timeout: 1500 });
+  }).toPass({ timeout: 60_000 });
   await page.getByLabel("Your name").fill(name);
   if (pin) {
     await page.getByRole("switch").click();
@@ -35,7 +39,7 @@ export async function inviteUrl(page: Page) {
 
 export async function joinAsGuest(page: Page, url: string, name = "Sam", pin?: string) {
   await page.goto(url);
-  await page.getByLabel("Your name").fill(name);
+  await page.getByLabel("Your name").fill(name, { timeout: 60_000 });
   if (pin) await page.getByLabel("Room PIN").fill(pin);
   await page.getByTestId("join-submit").click();
   await enterRoom(page);
