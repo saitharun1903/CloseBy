@@ -1,4 +1,5 @@
 "use client";
+import { RememberSignIn } from "./remember-signin";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as D from "@radix-ui/react-dialog";
 import { FolderOpen, Globe, Link as LinkIcon, Loader, X } from "lucide-react";
@@ -136,7 +137,10 @@ function BrowserTab() {
 
   return (
     <div>
-      <p className="text-[13px] leading-relaxed text-paper-dim">A real browser in the cloud that you both see, hear and control — go anywhere, click, type, scroll.</p>
+      <p className="text-[13px] leading-relaxed text-paper-dim">A real browser in the cloud that you both see, hear and control — go anywhere, click, type, scroll, and sign in with your Google account.</p>
+      <div className="mt-3">
+        <RememberSignIn />
+      </div>
       <ul className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-6">
         {QUICK_SITES.map((s) => (
           <li key={s.label}>

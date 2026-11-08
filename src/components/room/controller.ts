@@ -30,6 +30,8 @@ import {
   type ServerMessage,
 } from "@/lib/protocol";
 import { useRoom } from "./store";
+import { takeToken } from "./token-cache";
+import { browserProfile } from "./browser-profile";
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -117,7 +119,7 @@ export class RoomController {
     useRoom.setState({ conn: "connecting", end: undefined });
     let token: { token: string; url: string };
     try {
-      token = await api("/api/rooms/" + this.roomId + "/token", { method: "POST", body: {} });
+      token = (first && takeToken(this.roomId)) || (await api("/api/rooms/" + this.roomId + "/token", { method: "POST", body: {} }));
     } catch (e) {
       this.handleApiFatal(e);
       return;
@@ -135,30 +137,37 @@ export class RoomController {
       return;
     }
     this.retry = 0;
+    void this.refreshState();
     await this.publishInitial(first);
-    await this.refreshState();
     this.bump();
   }
 
   private async publishInitial(first: boolean) {
     const lp = this.room.localParticipant;
     const { audio, video, micOn, camOn } = this.initial;
-    try {
-      if (first && audio) {
-        // Mute before publishing so not a single frame of audio leaves when the mic is "off".
-        if (!micOn) await audio.mute();
-        await lp.publishTrack(audio, { source: Track.Source.Microphone });
-      } else if (micOn) await lp.setMicrophoneEnabled(true, this.initial.audioInput ? { deviceId: this.initial.audioInput } : undefined);
-    } catch (e) {
-      this.mediaError("microphone", e);
-    }
-    try {
-      if (first && video && camOn) await lp.publishTrack(video, { source: Track.Source.Camera });
-      else if (camOn) await lp.setCameraEnabled(true, this.initial.videoInput ? { deviceId: this.initial.videoInput } : undefined);
-    } catch (e) {
-      this.mediaError("camera", e);
-    }
-    if (first && video && !camOn) video.stop();
+    // Mic and camera publish in parallel — each negotiates separately.
+    await Promise.all([
+      (async () => {
+        try {
+          if (first && audio) {
+            // Mute before publishing so not a single frame of audio leaves when the mic is "off".
+            if (!micOn) await audio.mute();
+            await lp.publishTrack(audio, { source: Track.Source.Microphone });
+          } else if (micOn) await lp.setMicrophoneEnabled(true, this.initial.audioInput ? { deviceId: this.initial.audioInput } : undefined);
+        } catch (e) {
+          this.mediaError("microphone", e);
+        }
+      })(),
+      (async () => {
+        try {
+          if (first && video && camOn) await lp.publishTrack(video, { source: Track.Source.Camera });
+          else if (camOn) await lp.setCameraEnabled(true, this.initial.videoInput ? { deviceId: this.initial.videoInput } : undefined);
+        } catch (e) {
+          this.mediaError("camera", e);
+        }
+        if (first && video && !camOn) video.stop();
+      })(),
+    ]);
   }
 
   async rejoin() {
@@ -317,7 +326,19 @@ export class RoomController {
   }
 
   async startBrowser(startUrl?: string) {
-    const r = await api<{ embedUrl: string; browser: import("@/lib/protocol").BrowserStateDTO }>(`/api/rooms/${this.roomId}/browser`, { body: { startUrl } });
+    type R = { embedUrl: string; browser: import("@/lib/protocol").BrowserStateDTO; profileId: string | null };
+    let profile = browserProfile.wanted();
+    let r: R;
+    try {
+      r = await api<R>(`/api/rooms/${this.roomId}/browser`, { body: { startUrl, profile } });
+    } catch (e) {
+      // A saved profile can expire on the provider's side: start a fresh one instead.
+      if (!profile || profile === "new") throw e;
+      browserProfile.save("");
+      profile = "new";
+      r = await api<R>(`/api/rooms/${this.roomId}/browser`, { body: { startUrl, profile } });
+    }
+    if (profile && r.profileId) browserProfile.save(r.profileId);
     useRoom.setState({ browser: r.browser, playback: { ...useRoom.getState().playback } });
     void this.refreshState();
     return r.embedUrl;

@@ -127,7 +127,7 @@ describe("computeCorrection", () => {
   it("scales the nudge with the nominal rate", () => {
     const c = computeCorrection({ ...base, nominalRate: 2, actualSec: 10.5, expectedSec: 10 });
     expect(c.rate).toBeLessThan(2);
-    expect(c.rate).toBeGreaterThan(1.8);
+    expect(c.rate).toBeGreaterThanOrEqual(2 * (1 - MAX_NUDGE));
   });
   it("hard-seeks on large drift", () => {
     const c = computeCorrection({ ...base, actualSec: 10 + DRIFT_HARD_SEEK_SEC + 0.1, expectedSec: 10 });

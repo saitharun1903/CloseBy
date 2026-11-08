@@ -1,6 +1,7 @@
 "use client";
 import { Room, Track } from "livekit-client";
 import {
+  Loader,
   Columns2,
   Ellipsis,
   Headphones,
@@ -36,6 +37,7 @@ import { REACTIONS } from "@/lib/protocol";
 import { useController, useLk } from "./context";
 import { MicMeter } from "./mic-meter";
 import { setSound, useRoom, type LayoutPref } from "./store";
+import { toast } from "@/components/toaster";
 
 type CtlProps = {
   label: string;
@@ -104,6 +106,37 @@ function PopoverCtl({ label, testId, children, content, open, onOpenChange, cont
 
 const canShareScreen = () => typeof navigator !== "undefined" && !!navigator.mediaDevices?.getDisplayMedia && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
+/**
+ * Opens the real youtube.com in the shared cloud browser (both of you see,
+ * hear and control it, and can sign in with Google). Without a browser
+ * service it falls back to the built-in YouTube browser.
+ */
+function YouTubeButton({ disabled }: { disabled: boolean }) {
+  const c = useController();
+  const real = useRoom((s) => s.features.sharedBrowser);
+  const active = useRoom((s) => s.browser.active);
+  const [busy, setBusy] = useState(false);
+  async function open() {
+    if (!real) return useRoom.setState({ ytOpen: true });
+    if (active) return useRoom.setState({ panel: null, layoutPref: "auto" });
+    setBusy(true);
+    try {
+      await c.startBrowser("https://www.youtube.com");
+      useRoom.setState({ panel: null, layoutPref: "auto" });
+    } catch (e) {
+      toast({ title: "Couldn’t open YouTube", body: (e as Error).message || "Showing the built-in YouTube instead." });
+      useRoom.setState({ ytOpen: true });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <CtlButton label="YouTube" onClick={() => void open()} disabled={busy || (real && disabled)} testId="ctl-youtube" className="!bg-[#ff0033] !text-white hover:!bg-[#ff1a47]">
+      {busy ? <Loader className="animate-spin" /> : <Play className="fill-current" />}
+    </CtlButton>
+  );
+}
+
 export function ControlBar({ immersive, onToggleImmersive, onLeave }: { immersive: boolean; onToggleImmersive: () => void; onLeave: () => void }) {
   const c = useController();
   const room = useLk();
@@ -148,9 +181,7 @@ export function ControlBar({ immersive, onToggleImmersive, onLeave }: { immersiv
       <CtlButton label="Watch together" active={watching} onClick={() => useRoom.setState({ watchOpen: true })} testId="ctl-watch">
         <Tv />
       </CtlButton>
-      <CtlButton label="YouTube" onClick={() => useRoom.setState({ ytOpen: true })} testId="ctl-youtube" className="!bg-[#ff0033] !text-white hover:!bg-[#ff1a47]">
-        <Play className="fill-current" />
-      </CtlButton>
+      <YouTubeButton disabled={disabled} />
       {shareOk && (
         <CtlButton label={sharing ? "Stop sharing" : "Share screen"} active={sharing} onClick={() => void (sharing ? c.stopScreenShare() : c.startScreenShare())} disabled={disabled} testId="ctl-share" className="max-sm:hidden">
           {sharing ? <MonitorOff /> : <MonitorUp />}

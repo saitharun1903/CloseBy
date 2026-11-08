@@ -56,6 +56,7 @@ Legend: **✅ Auto** — implemented and covered by automated tests that were ru
 | Hidden on mobile (unsupported) | ✅ Impl |
 | Share links in chat → each opens in own browser (`noopener`) | ✅ Auto |
 | Point at things on the shared stage (double-click ping) | ✅ Impl |
+| Real youtube.com with Google sign-in (YouTube button → shared browser; optional saved profile) | ✅ Auto (profile/timeouts unit-tested) · 🧪 Manual: sign-in needs a real device + Hyperbeam |
 | Co-browsing of any website | ✅ via the Hyperbeam shared browser (needs an API key) — DRM sites (Netflix, Prime Video, Disney+) generally won't play |
 
 ## Chat, reactions, layouts

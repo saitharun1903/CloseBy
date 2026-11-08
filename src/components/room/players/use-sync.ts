@@ -8,8 +8,8 @@ import { serverNow, useRoom, type SyncState } from "../store";
 const PENDING_MS = 2500;
 const MIN_SEEK_INTERVAL_MS = 1500;
 /** Players that can't nudge their rate (YouTube) correct by seeking past this drift. */
-const SEEK_ONLY_THRESHOLD = 0.7;
-const SEEK_ONLY_INTERVAL_MS = 3000;
+const SEEK_ONLY_THRESHOLD = 0.45;
+const SEEK_ONLY_INTERVAL_MS = 2500;
 
 function setSync(s: SyncState) {
   if (useRoom.getState().sync !== s) useRoom.setState({ sync: s });

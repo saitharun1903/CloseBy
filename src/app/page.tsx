@@ -4,10 +4,12 @@ import { JoinRoomDialog } from "@/components/landing/join-room-dialog";
 import { RoomPreview } from "@/components/landing/room-preview";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
+import { Warmup } from "@/components/warmup";
 
 export default function Landing() {
   return (
     <div className="relative min-h-dvh overflow-x-clip bg-black">
+      <Warmup />
       <div aria-hidden className="pointer-events-none absolute left-1/2 top-[-420px] h-[900px] w-[1400px] -translate-x-1/2 bg-[radial-gradient(closest-side,rgb(10_132_255/0.16),transparent)]" />
 
       <header className="relative mx-auto flex max-w-[1200px] items-center justify-between px-5 pt-[calc(var(--safe-top)+18px)] sm:px-8">

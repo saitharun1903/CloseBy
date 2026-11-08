@@ -8,6 +8,7 @@ import { loadDevicePrefs, saveDevicePrefs } from "@/lib/prefs";
 import type { RoomStateDTO } from "@/lib/protocol";
 import type { InitialMedia } from "./controller";
 import { MicMeter } from "./mic-meter";
+import { prefetchToken } from "./token-cache";
 
 type DevState = { status: "off" | "starting" | "on" | "error"; error?: string };
 
@@ -84,6 +85,11 @@ export function Lobby({ state, onJoin }: { state: RoomStateDTO; onJoin: (m: Init
     },
     [refreshDevices],
   );
+
+  // Get the call token and warm up the connection while the user checks their camera.
+  useEffect(() => {
+    prefetchToken(state.room.id);
+  }, [state.room.id]);
 
   // Acquire devices once on mount; release them unless handed to the room.
   useEffect(() => {
