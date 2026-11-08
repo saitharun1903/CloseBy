@@ -60,6 +60,30 @@ test.describe("YouTube together", () => {
     await expect.poll(() => bothInSync(host.page, guest.page, 0.75), { timeout: 10_000 }).toBe(true);
   });
 
+  test("the YouTube home: browse categories, search, and play for both", async ({ browser }) => {
+    const { host, guest } = await pair(browser);
+    for (const p of [host.page, guest.page]) await fakeYouTube(p);
+
+    await host.page.getByTestId("ctl-youtube").click();
+    const hub = host.page.getByTestId("youtube-hub");
+    await expect(hub.getByTestId("yt-results")).toContainText("Top video (all)");
+    await expect(hub.getByTestId("yt-results")).toContainText("2:00");
+    await expect(hub.getByTestId("yt-results")).toContainText("123.5K views");
+
+    await hub.getByTestId("yt-cat-music").click();
+    await expect(hub.getByTestId("yt-results")).toContainText("Top video (10)");
+
+    await hub.getByTestId("yt-input").fill("lofi");
+    await hub.getByTestId("yt-input").press("Enter");
+    await expect(hub.getByTestId("yt-results")).toContainText("Result for search");
+
+    await hub.getByRole("button", { name: /^Play Result for search for both of you$/ }).click();
+    await expect(hub).toBeHidden();
+    for (const p of [host.page, guest.page]) await expect(p.locator("[data-fake-youtube=srchsrch001]")).toBeAttached({ timeout: 15_000 });
+    // The partner is told what started.
+    await expect(guest.page.getByText("Maya started something")).toBeVisible();
+  });
+
   test("videos that can't be embedded are refused with a reason", async ({ browser }) => {
     const { host } = await pair(browser);
     await fakeYouTube(host.page);

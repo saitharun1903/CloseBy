@@ -6,14 +6,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Closeby — movie night, from two places", template: "%s · Closeby" },
-  description: "A private room for exactly two people. See each other, talk freely, and watch in sync.",
+  title: { default: "Closeby — watch together, feel together", template: "%s · Closeby" },
+  description: "A private room for two: video call while you watch YouTube, your own films, or browse the web together — perfectly in sync.",
   robots: { index: true, follow: true },
   icons: { icon: "/icon.svg" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0c0b0a",
+  themeColor: "#000000",
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,

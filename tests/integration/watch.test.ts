@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { AppError } from "@/server/errors";
 import type { BrowserProvider } from "@/server/hyperbeam";
-import { addQueueItem, createRoom, endRoom, getBrowser, getRoomState, joinRoom, searchYouTube, startBrowser, stopBrowser, submitPlaybackIntent } from "@/server/rooms";
+import { addQueueItem, createRoom, endRoom, getBrowser, getRoomState, joinRoom, searchYouTube, startBrowser, youtubeTrending, stopBrowser, submitPlaybackIntent } from "@/server/rooms";
 import type { YouTubeService } from "@/server/youtube";
 import { makeDb, makeDeps, truncate } from "./helpers";
 
@@ -27,6 +27,7 @@ const fakeYouTube: YouTubeService = {
     return { id, title: `Video ${id}`, channel: "Chan", thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg` };
   },
   search: async (q) => [{ id: "dQw4w9WgXcQ", title: `Result for ${q}`, channel: null, thumbnailUrl: "t" }],
+  trending: async (c) => [{ id: "dQw4w9WgXcQ", title: `Top in ${c}`, channel: null, thumbnailUrl: "t" }],
 };
 
 async function setup() {
@@ -53,6 +54,11 @@ describe("YouTube in the watchlist", () => {
     expect((await searchYouTube(d, r.claims, r.roomId, "cats")).results[0]!.title).toBe("Result for cats");
     await expect(searchYouTube(d, null, r.roomId, "cats")).rejects.toThrow();
     await expect(searchYouTube({ ...d, youtube: { ...fakeYouTube, search: null } }, r.claims, r.roomId, "cats")).rejects.toThrow(/isn’t enabled/);
+  });
+  it("trending is member-only", async () => {
+    const { d, r } = await setup();
+    expect((await youtubeTrending(d, r.claims, r.roomId, "music")).results[0]!.title).toBe("Top in music");
+    await expect(youtubeTrending(d, null, r.roomId, "music")).rejects.toThrow();
   });
 });
 

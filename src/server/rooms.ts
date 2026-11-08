@@ -553,3 +553,9 @@ export async function searchYouTube(d: RoomDeps, claims: SessionClaims | null, r
   if (!d.youtube?.search) throw new AppError("media_unavailable", "Search isn’t enabled. Paste a YouTube link instead.");
   return { results: await d.youtube.search(q) };
 }
+
+export async function youtubeTrending(d: RoomDeps, claims: SessionClaims | null, roomId: string, category: string) {
+  await authorize(d, claims, roomId);
+  if (!d.youtube?.trending) throw new AppError("media_unavailable", "Browsing YouTube isn’t enabled. Paste a link instead.");
+  return { results: await d.youtube.trending(category) };
+}

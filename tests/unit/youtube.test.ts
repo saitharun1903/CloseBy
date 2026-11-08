@@ -40,8 +40,54 @@ describe("YouTube service", () => {
     await expect(createYouTubeService(undefined, fake(401)).lookup("dQw4w9WgXcQ")).rejects.toThrow(/doesn’t allow/);
     await expect(createYouTubeService(undefined, fake(404)).lookup("dQw4w9WgXcQ")).rejects.toBeInstanceOf(AppError);
   });
-  it("search maps results when a key is configured", async () => {
-    const s = createYouTubeService("k", fake(200, { items: [{ id: { videoId: "dQw4w9WgXcQ" }, snippet: { title: "Tom &amp; Jerry", channelTitle: "C" } }, { id: {} }] }));
-    expect(await s.search!("tom")).toEqual([{ id: "dQw4w9WgXcQ", title: "Tom & Jerry", channel: "C", thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg" }]);
+});
+
+describe("YouTube browse", () => {
+  it("parses ISO 8601 durations", async () => {
+    const { parseIsoDuration } = await import("@/server/youtube");
+    expect(parseIsoDuration("PT1H2M3S")).toBe(3723);
+    expect(parseIsoDuration("PT45S")).toBe(45);
+    expect(parseIsoDuration("P1DT1M")).toBe(86460);
+    expect(parseIsoDuration(undefined)).toBeNull();
+  });
+
+  it("trending maps details, drops non-embeddable videos, and caches", async () => {
+    let calls = 0;
+    const f = (async (url: string) => {
+      calls++;
+      expect(String(url)).toContain("chart=mostPopular");
+      expect(String(url)).toContain("videoCategoryId=10");
+      expect(String(url)).toContain("regionCode=IN");
+      return new Response(
+        JSON.stringify({
+          items: [
+            { id: "aaaaaaaaaaa", snippet: { title: "Song", channelTitle: "Artist", publishedAt: "2026-11-01T00:00:00Z" }, contentDetails: { duration: "PT3M30S" }, statistics: { viewCount: "1200" }, status: { embeddable: true } },
+            { id: "bbbbbbbbbbb", snippet: { title: "Blocked" }, status: { embeddable: false } },
+          ],
+        }),
+        { status: 200 },
+      );
+    }) as unknown as typeof fetch;
+    const s = createYouTubeService("k", f);
+    const r = await s.trending!("music");
+    expect(r).toEqual([
+      { id: "aaaaaaaaaaa", title: "Song", channel: "Artist", thumbnailUrl: "https://i.ytimg.com/vi/aaaaaaaaaaa/hqdefault.jpg", durationSec: 210, views: 1200, publishedAt: "2026-11-01T00:00:00Z" },
+    ]);
+    await s.trending!("music");
+    expect(calls).toBe(1);
+  });
+
+  it("search enriches results with durations and views", async () => {
+    const f = (async (url: string) => {
+      if (String(url).includes("/search?")) return new Response(JSON.stringify({ items: [{ id: { videoId: "ccccccccccc" } }] }), { status: 200 });
+      return new Response(JSON.stringify({ items: [{ id: "ccccccccccc", snippet: { title: "Found" }, contentDetails: { duration: "PT10M" }, statistics: { viewCount: "5" } }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const r = await createYouTubeService("k", f).search!("x");
+    expect(r[0]).toMatchObject({ id: "ccccccccccc", title: "Found", durationSec: 600, views: 5 });
+  });
+
+  it("reports quota exhaustion clearly", async () => {
+    const f = (async () => new Response("{}", { status: 403 })) as unknown as typeof fetch;
+    await expect(createYouTubeService("k", f).trending!("trending")).rejects.toThrow(/daily limit/);
   });
 });

@@ -259,7 +259,14 @@ export class RoomController {
     const s = useRoom.getState();
     switch (msg.kind) {
       case "playback":
-        if (isNewer(msg.state, s.playback)) useRoom.setState({ playback: msg.state });
+        if (isNewer(msg.state, s.playback)) {
+          const switched = msg.state.mediaId && msg.state.mediaId !== s.playback.mediaId && msg.state.updatedBy && msg.state.updatedBy !== s.me.id;
+          useRoom.setState({ playback: msg.state });
+          if (switched) {
+            const title = useRoom.getState().queue.find((q) => q.id === msg.state.mediaId)?.title;
+            toast({ title: `${this.partnerName() ?? "Your partner"} started something`, body: title });
+          }
+        }
         break;
       case "queue":
         useRoom.setState({ queue: msg.items });

@@ -16,6 +16,10 @@ const schema = z.object({
   YOUTUBE_API_KEY: z.string().optional(),
   /** Test seam: where to validate YouTube videos (defaults to YouTube's public oEmbed endpoint). */
   YOUTUBE_OEMBED_URL: z.string().url().default("https://www.youtube.com/oembed"),
+  /** Test seam for the Data API. */
+  YOUTUBE_API_BASE: z.string().url().default("https://www.googleapis.com/youtube/v3"),
+  /** Country for trending/search results (ISO 3166-1 alpha-2). */
+  YOUTUBE_REGION: z.string().length(2).default("IN"),
   /** Optional: enables the shared cloud browser (Hyperbeam). */
   HYPERBEAM_API_KEY: z.string().optional(),
   HYPERBEAM_REGION: z.enum(["NA", "EU", "AS"]).default("AS"),

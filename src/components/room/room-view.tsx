@@ -21,6 +21,7 @@ import { SharedBrowser } from "./shared-browser";
 import { AudioBlockedBanner, ConnectionOverlay, PingLayer, ReactionsLayer, ScreenStage, TopBar, WaitingCard } from "./stage-parts";
 import { initRoomStore, useRoom, type LayoutPref } from "./store";
 import { WatchPicker } from "./watch-picker";
+import { YouTubeHub } from "./youtube-hub";
 
 export function RoomView({ initial, media, onLeft }: { initial: RoomStateDTO; media: InitialMedia; onLeft: (seatKept: boolean) => void }) {
   const [ctl, setCtl] = useState<RoomController | null>(null);
@@ -159,6 +160,7 @@ function RoomShell({ onLeft }: { onLeft: (seatKept: boolean) => void }) {
 
       <SidePanel desktop={desktop} />
       <WatchPicker />
+      <YouTubeHub />
       <LeaveDialog
         open={leaveOpen}
         onOpenChange={setLeaveOpen}

@@ -41,6 +41,8 @@ export interface RoomStore {
   features: { youtubeSearch: boolean; sharedBrowser: boolean };
   /** The "Watch together" picker. */
   watchOpen: boolean;
+  /** The full-screen YouTube home. */
+  ytOpen: boolean;
 
   conn: ConnState;
   end?: EndInfo;
@@ -83,6 +85,7 @@ export function initRoomStore(s: RoomStateDTO) {
       browser: s.browser,
       features: s.features,
       watchOpen: false,
+      ytOpen: false,
       conn: "connecting",
       end: undefined,
       lk: 0,

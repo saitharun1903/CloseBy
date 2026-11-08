@@ -17,6 +17,7 @@ import {
   MonitorUp,
   PhoneOff,
   PictureInPicture2,
+  Play,
   Power,
   Rows2,
   Tv,
@@ -147,6 +148,9 @@ export function ControlBar({ immersive, onToggleImmersive, onLeave }: { immersiv
       <CtlButton label="Watch together" active={watching} onClick={() => useRoom.setState({ watchOpen: true })} testId="ctl-watch">
         <Tv />
       </CtlButton>
+      <CtlButton label="YouTube" onClick={() => useRoom.setState({ ytOpen: true })} testId="ctl-youtube" className="!bg-[#ff0033] !text-white hover:!bg-[#ff1a47]">
+        <Play className="fill-current" />
+      </CtlButton>
       {shareOk && (
         <CtlButton label={sharing ? "Stop sharing" : "Share screen"} active={sharing} onClick={() => void (sharing ? c.stopScreenShare() : c.startScreenShare())} disabled={disabled} testId="ctl-share" className="max-sm:hidden">
           {sharing ? <MonitorOff /> : <MonitorUp />}
@@ -167,6 +171,7 @@ export function ControlBar({ immersive, onToggleImmersive, onLeave }: { immersiv
 function ReactionsButton() {
   const c = useController();
   return (
+    <span className="contents max-[400px]:hidden">
     <PopoverCtl
       label="React"
       testId="ctl-react"
@@ -179,6 +184,7 @@ function ReactionsButton() {
     >
       <Heart />
     </PopoverCtl>
+    </span>
   );
 }
 
@@ -222,6 +228,13 @@ function MoreButton({ immersive, onToggleImmersive, onQueue }: { immersive: bool
       contentClass="w-[340px] max-h-[70dvh] overflow-y-auto p-0 scrollbar-quiet"
       content={
         <div className="divide-y divide-white/[0.07]">
+          <section className="flex justify-between p-3 min-[401px]:hidden" aria-label="Reactions">
+            {REACTIONS.map((e) => (
+              <button key={e} onClick={() => c.sendReaction(e)} className="grid size-10 place-items-center rounded-full text-[22px] hover:bg-white/10" aria-label={`Send ${e}`}>
+                {e}
+              </button>
+            ))}
+          </section>
           <section className="p-4">
             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-paper-faint">Volume · only what you hear</h3>
             <VolumeRow label="Video & shared sound" value={mediaMuted ? 0 : sound.mediaVolume} onChange={(v) => { setSound({ mediaVolume: v }); useRoom.setState({ mediaMuted: false }); }} testId="vol-media" />

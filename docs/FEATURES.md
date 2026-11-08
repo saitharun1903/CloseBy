@@ -42,7 +42,8 @@ Legend: **✅ Auto** — implemented and covered by automated tests that were ru
 | Local subtitles (.srt/.vtt), lifted above controls | ✅ Impl (converter ✅ Auto) |
 | Independent film volume, film mute, partner voice volume; mic independent | ✅ Auto |
 | Shared queue: add / remove / reorder / play next / now-playing / host auto-advance | ✅ Auto (auto-advance ✅ Impl) |
-| **YouTube built in**: paste a link (or search, with `YOUTUBE_API_KEY`), synced play/pause/seek/speed, policy-compliant layout | ✅ Auto against a stand-in YouTube player · 🧪 Manual with real YouTube |
+| **YouTube built in**: paste a link, synced play/pause/seek/speed, policy-compliant layout | ✅ Auto against a stand-in YouTube player · 🧪 Manual with real YouTube |
+| **YouTube home** (dedicated button): trending by category (Music, Movies, Shows, Comedy, Gaming, Sports, News, Tech), search with durations/views, Play for both / Up next, "Open real YouTube together" in the shared browser; partner is notified when something starts | ✅ Auto against a stand-in Data API · needs `YOUTUBE_API_KEY` in production |
 | **Shared cloud browser (Hyperbeam)**: start/join/close, one per room, cost timeouts, token never broadcast | ✅ Auto (server + UI when disabled) · 🧪 Manual once `HYPERBEAM_API_KEY` is set |
 | Streaming-service integrations (DRM) | ⏳ Not possible without licensed provider SDKs; deliberately unsupported |
 
