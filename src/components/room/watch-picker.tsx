@@ -184,7 +184,7 @@ function BrowserTab() {
       </form>
       <FieldError>{error}</FieldError>
       <p className="mt-4 text-[12px] leading-relaxed text-paper-faint">
-        Sites that use DRM — Netflix, Prime Video, Disney+ — usually won’t play here. The browser closes on its own after 15 minutes without use.
+        Sites that use DRM — Netflix, Prime Video, Disney+ — usually won’t play here. It closes on its own once nobody is connected, or after 3 hours without a click.
       </p>
     </div>
   );

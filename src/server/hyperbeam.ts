@@ -27,7 +27,18 @@ export const BROWSER_TIMEOUTS = {
   warning: 60,
 };
 
-export function createHyperbeamProvider(apiKey: string, f: typeof fetch = fetch): BrowserProvider {
+/** Keys pasted into a dashboard often carry quotes, spaces or a "Bearer " prefix. */
+export function cleanApiKey(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^(['"`])(.*)\1$/s, "$2")
+    .trim()
+    .replace(/^bearer\s+/i, "")
+    .trim();
+}
+
+export function createHyperbeamProvider(rawKey: string, f: typeof fetch = fetch): BrowserProvider {
+  const apiKey = cleanApiKey(rawKey);
   const base = "https://engine.hyperbeam.com/v0/vm";
   const headers = { authorization: `Bearer ${apiKey}`, "content-type": "application/json" };
   return {
@@ -59,7 +70,7 @@ export function createHyperbeamProvider(apiKey: string, f: typeof fetch = fetch)
         throw new AppError("media_unavailable", "Couldn’t reach the shared-browser service. Try again.");
       }
       if (res.status === 401 || res.status === 403) {
-        console.error("[hyperbeam] rejected API key (status", res.status, ")");
+        console.error(`[hyperbeam] rejected API key (status ${res.status}, key length ${apiKey.length}) — update HYPERBEAM_API_KEY in Vercel and redeploy`);
         throw new AppError("media_unavailable", "The shared browser isn’t set up correctly on this server.");
       }
       if (res.status === 429 || res.status === 402) throw new AppError("media_unavailable", "The shared browser is at capacity right now. Try again later.");
