@@ -1,0 +1,119 @@
+@import "tailwindcss";
+@import "@fontsource/instrument-serif/latin-400.css";
+@import "@fontsource/instrument-serif/latin-400-italic.css";
+
+/*
+ * Closeby design tokens
+ * Cinematic charcoal, warm paper text, a single "projector lamp" amber accent.
+ */
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+
+  --color-ink-950: #0c0b0a;
+  --color-ink-900: #131210;
+  --color-ink-850: #191715;
+  --color-ink-800: #201e1b;
+  --color-ink-750: #282521;
+  --color-ink-700: #322e29;
+  --color-ink-600: #423d36;
+
+  --color-paper: #eee7dc;
+  --color-paper-dim: #b4aa9c;
+  --color-paper-faint: #7c7368;
+  --color-paper-ghost: #554e46;
+
+  --color-lamp: #e3a664;
+  --color-lamp-bright: #ecb879;
+  --color-lamp-deep: #b87e45;
+  --color-lamp-ink: #1c140b;
+
+  --color-danger: #df6f58;
+  --color-danger-deep: #b9533f;
+  --color-ok: #97bb8b;
+  --color-caution: #dcbd72;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --shadow-soft: 0 1px 0 0 rgb(255 245 230 / 0.04) inset, 0 8px 24px -12px rgb(0 0 0 / 0.55);
+  --shadow-float: 0 1px 0 0 rgb(255 245 230 / 0.06) inset, 0 18px 48px -16px rgb(0 0 0 / 0.75), 0 2px 6px rgb(0 0 0 / 0.35);
+  --shadow-ring: 0 0 0 1px rgb(255 240 220 / 0.07);
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
+
+  --animate-fade-in: fade-in 240ms var(--ease-out-quart) both;
+  --animate-breathe: breathe 3.2s ease-in-out infinite;
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.45; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.06); }
+  }
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --line: rgb(255 240 220 / 0.075);
+    --line-strong: rgb(255 240 220 / 0.13);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+  }
+  html, body {
+    background: var(--color-ink-950);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body { font-size: 15px; line-height: 1.5; }
+  ::selection { background: color-mix(in srgb, var(--color-lamp) 35%, transparent); color: var(--color-paper); }
+  :focus-visible { outline: 2px solid var(--color-lamp); outline-offset: 2px; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  * { -webkit-tap-highlight-color: transparent; }
+  /* Subtle film grain to warm up large flat surfaces */
+  .grain::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .06; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  video::cue {
+    font-family: var(--font-sans);
+    background: rgb(0 0 0 / 0.62);
+    color: #fff;
+    font-size: 1.05em;
+    line-height: 1.35;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+  }
+}
+
+@utility hairline { border-color: var(--line); }
+@utility hairline-strong { border-color: var(--line-strong); }
+@utility tabular { font-variant-numeric: tabular-nums; }
+@utility scrollbar-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-600) transparent;
+}
+
+/* Lift subtitles above the player controls while they're visible (Chromium/WebKit). */
+.controls-up video::-webkit-media-text-track-container {
+  transform: translateY(-64px);
+  transition: transform 200ms var(--ease-out-quart);
+}
+video::-webkit-media-text-track-container {
+  transition: transform 200ms var(--ease-out-quart);
+}

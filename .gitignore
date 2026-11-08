@@ -12,3 +12,4 @@ playwright-report
 tests/e2e/fixtures/*.mp4
 tests/e2e/fixtures/*.webm
 .DS_Store
+.next-e2e

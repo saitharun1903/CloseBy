@@ -53,6 +53,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  agentRules: false,
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   serverExternalPackages: ["postgres", "ioredis", "livekit-server-sdk"],
   async headers() {
