@@ -22,6 +22,8 @@ ffmpeg -f lavfi -i "testsrc2=size=480x270:rate=24" -f lavfi -i "sine=frequency=3
 
 (WebM because Playwright's open-source Chromium has no H.264/AAC decoder.)
 
+Stop any `npm run dev` in the same checkout before running E2E: two Next dev servers with different build directories keep rewriting `tsconfig.json`, which sends both into a reload loop and every test times out. The E2E server also raises rate limits (`RATE_LIMIT_SCALE=50`), because the suite creates far more rooms from one IP than the real limit allows.
+
 ### E2E scenarios
 
 `call.spec.ts`
