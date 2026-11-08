@@ -48,7 +48,6 @@ export default defineConfig({
       env: {
         APP_URL: BASE,
         NEXT_PUBLIC_E2E: "1",
-        NEXT_DIST_DIR: ".next-e2e",
         DATABASE_URL: process.env.E2E_DATABASE_URL ?? "postgres://closeby:closeby@localhost:5432/closeby_test",
         LIVEKIT_API_KEY: "devkey",
         LIVEKIT_API_SECRET: "secret",
@@ -59,6 +58,8 @@ export default defineConfig({
         // Tests create far more rooms from one IP than any person would.
         RATE_LIMIT_SCALE: "50",
         YOUTUBE_OEMBED_URL: "http://127.0.0.1:3199/oembed",
+        YOUTUBE_API_KEY: "test-key",
+        YOUTUBE_API_BASE: "http://127.0.0.1:3199/yt",
       },
     },
     {

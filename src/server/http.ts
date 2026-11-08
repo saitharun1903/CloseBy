@@ -17,7 +17,7 @@ let services: { youtube: YouTubeService; browser: BrowserProvider | null } | nul
 export function deps(): RoomDeps {
   const e = env();
   services ??= {
-    youtube: createYouTubeService(e.YOUTUBE_API_KEY || undefined, fetch, e.YOUTUBE_OEMBED_URL),
+    youtube: createYouTubeService(e.YOUTUBE_API_KEY || undefined, fetch, e.YOUTUBE_OEMBED_URL, { apiBase: e.YOUTUBE_API_BASE, region: e.YOUTUBE_REGION }),
     browser: e.HYPERBEAM_API_KEY ? createHyperbeamProvider(e.HYPERBEAM_API_KEY) : null,
   };
   return {

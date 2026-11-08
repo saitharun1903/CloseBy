@@ -5,6 +5,23 @@ import { join } from "node:path";
 const dir = new URL("./fixtures/", import.meta.url).pathname;
 createServer((req, res) => {
   if (req.url === "/health") return res.end("ok");
+  // Stand-in for the YouTube Data API v3 (trending + search).
+  if (req.url?.startsWith("/yt/")) {
+    const u = new URL(req.url, "http://x");
+    const cat = u.searchParams.get("videoCategoryId") ?? "all";
+    const q = u.searchParams.get("q");
+    const video = (id, title) => ({
+      id,
+      snippet: { title, channelTitle: "Test Channel", publishedAt: "2026-11-01T00:00:00Z" },
+      contentDetails: { duration: "PT2M" },
+      statistics: { viewCount: "123456" },
+      status: { embeddable: true },
+    });
+    res.writeHead(200, { "content-type": "application/json" });
+    if (u.pathname === "/yt/search") return res.end(JSON.stringify({ items: [{ id: { videoId: "srchsrch001" } }] }));
+    if (u.searchParams.get("id")) return res.end(JSON.stringify({ items: u.searchParams.get("id").split(",").map((id) => video(id, `Result for ${q ?? "search"}`)) }));
+    return res.end(JSON.stringify({ items: [video("trend000001", `Top video (${cat})`), video("trend000002", `Second video (${cat})`)] }));
+  }
   // Stand-in for YouTube's oEmbed endpoint (the test environment can't reach YouTube).
   if (req.url?.startsWith("/oembed")) {
     const v = new URL(req.url, "http://x").searchParams.get("url") ?? "";

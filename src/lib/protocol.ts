@@ -111,6 +111,9 @@ export interface YouTubeResultDTO {
   title: string;
   channel: string | null;
   thumbnailUrl: string;
+  durationSec?: number | null;
+  views?: number | null;
+  publishedAt?: string | null;
 }
 
 export interface ApiError {

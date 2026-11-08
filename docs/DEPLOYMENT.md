@@ -65,10 +65,11 @@ Create a Redis database in **ap-southeast-1 (Singapore)** and copy the `rediss:/
 ### 7b. Optional: YouTube search and the shared browser
 Both are optional; the app works without them and explains what's missing.
 
-**YouTube search** (pasting links works without this):
+**YouTube home: trending + search** (pasting links works without this):
 1. console.cloud.google.com → create a project → **APIs & Services → Library → "YouTube Data API v3" → Enable**.
 2. **Credentials → Create credentials → API key**. Restrict it: *API restrictions → YouTube Data API v3*.
-3. Add it to Vercel as `YOUTUBE_API_KEY` and redeploy. The free quota (10,000 units/day) allows about 100 searches a day; each search costs 100 units.
+3. Add it to Vercel as `YOUTUBE_API_KEY` and redeploy. Optional: `YOUTUBE_REGION` (default `IN`) picks the country for trending.
+   Quota (free, 10,000 units/day): a search costs ~101 units (≈ 100 searches/day); trending costs 1 unit per category and is cached for 15 minutes; playing videos costs nothing.
 
 **Shared browser (Hyperbeam):**
 1. Sign up at hyperbeam.com and create an API key in the dashboard.

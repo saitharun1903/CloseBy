@@ -1,16 +1,17 @@
 "use client";
 import * as Tabs from "@radix-ui/react-tabs";
 import * as D from "@radix-ui/react-dialog";
-import { FolderOpen, Globe, Link as LinkIcon, ListPlus, Loader, Play, Search, X } from "lucide-react";
+import { FolderOpen, Globe, Link as LinkIcon, Loader, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/input";
-import { api, ApiRequestError } from "@/lib/api";
+import type { ApiRequestError } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { httpUrlSchema, type YouTubeResultDTO } from "@/lib/protocol";
+import { httpUrlSchema } from "@/lib/protocol";
 import { parseYouTubeId } from "@/lib/youtube";
 import { useController } from "./context";
+import { YouTubeBrowse } from "./youtube-hub";
 import { useRoom } from "./store";
 import { explainMediaFailure, probeMedia } from "./use-media-probe";
 
@@ -61,8 +62,8 @@ export function WatchPicker() {
                 </Tabs.Trigger>
               ))}
             </Tabs.List>
-            <Tabs.Content value="youtube" className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-5 scrollbar-quiet">
-              <YouTubeTab />
+            <Tabs.Content value="youtube" className="flex min-h-0 flex-1 flex-col px-6 pb-4 pt-5">
+              <YouTubeBrowse layout="embedded" onDone={close} />
             </Tabs.Content>
             <Tabs.Content value="browser" className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-5 scrollbar-quiet">
               <BrowserTab />
@@ -79,109 +80,6 @@ export function WatchPicker() {
 
 function close() {
   useRoom.setState({ watchOpen: false });
-}
-
-function YouTubeTab() {
-  const c = useController();
-  const searchEnabled = useRoom((s) => s.features.youtubeSearch);
-  const [q, setQ] = useState("");
-  const [results, setResults] = useState<YouTubeResultDTO[] | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function add(urlOrId: string, playNow: boolean) {
-    setBusy(urlOrId);
-    setError(null);
-    try {
-      const item = await c.addToQueue({ kind: "youtube", url: urlOrId });
-      if (playNow || !useRoom.getState().playback.mediaId) {
-        await c.sendIntent({ type: "load", mediaId: item.id });
-        close();
-      } else toast({ tone: "success", title: "Added to Up next", body: item.title });
-    } catch (e) {
-      setError((e as ApiRequestError).message);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const text = q.trim();
-    if (!text) return;
-    if (parseYouTubeId(text)) return add(text, true);
-    if (!searchEnabled) return setError("Paste a YouTube link — search isn’t switched on for this site.");
-    setBusy("search");
-    setError(null);
-    try {
-      const r = await api<{ results: YouTubeResultDTO[] }>(`/api/rooms/${c.roomId}/youtube/search?q=${encodeURIComponent(text)}`);
-      setResults(r.results);
-      if (!r.results.length) setError("No videos found.");
-    } catch (err) {
-      setError((err as ApiRequestError).message);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  return (
-    <div>
-      <form onSubmit={submit} className="relative">
-        <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-paper-faint" />
-        <input
-          autoFocus
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setError(null);
-          }}
-          placeholder={searchEnabled ? "Search YouTube or paste a link" : "Paste a YouTube link"}
-          aria-label={searchEnabled ? "Search YouTube or paste a link" : "YouTube link"}
-          className="h-12 w-full rounded-full bg-white/[0.07] pl-11 pr-28 text-[15px] outline-none placeholder:text-paper-faint focus:bg-white/[0.1] focus:shadow-[0_0_0_4px_rgb(10_132_255/0.2)]"
-          data-testid="yt-input"
-        />
-        <Button type="submit" size="sm" variant="primary" className="absolute right-1.5 top-1/2 h-9 -translate-y-1/2" disabled={!!busy || !q.trim()}>
-          {busy === "search" || (busy && busy === q.trim()) ? <Loader className="animate-spin" /> : parseYouTubeId(q) ? "Play" : searchEnabled ? "Search" : "Play"}
-        </Button>
-      </form>
-      <FieldError>{error}</FieldError>
-
-      {results && results.length > 0 ? (
-        <ul className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2" aria-label="Search results">
-          {results.map((r) => (
-            <li key={r.id} className="group overflow-hidden rounded-2xl bg-white/[0.04] ring-1 ring-white/[0.06]">
-              <div className="relative aspect-video bg-ink-800">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={r.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-              </div>
-              <div className="p-3">
-                <p className="line-clamp-2 text-[14px] font-medium leading-snug">{r.title}</p>
-                {r.channel && <p className="mt-0.5 truncate text-[12px] text-paper-faint">{r.channel}</p>}
-                <div className="mt-3 flex gap-2">
-                  <Button size="sm" variant="primary" disabled={!!busy} onClick={() => void add(r.id, true)}>
-                    {busy === r.id ? <Loader className="animate-spin" /> : <Play className="fill-current" />} Play now
-                  </Button>
-                  <Button size="sm" variant="secondary" disabled={!!busy} onClick={() => void add(r.id, false)}>
-                    <ListPlus /> Up next
-                  </Button>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="mt-10 text-center">
-          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#ff0033]/15">
-            <Play className="size-6 fill-[#ff3355] text-[#ff3355]" />
-          </div>
-          <p className="mt-4 text-[15px] font-semibold">Watch any YouTube video in sync</p>
-          <p className="mx-auto mt-1 max-w-[380px] text-[13px] leading-relaxed text-paper-dim">
-            {searchEnabled ? "Search, or paste a link from YouTube." : "Copy a link from YouTube (Share → Copy link) and paste it above."} Either of you can pause, skip or change speed.
-          </p>
-        </div>
-      )}
-    </div>
-  );
 }
 
 function BrowserTab() {
