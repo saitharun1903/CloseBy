@@ -15,7 +15,7 @@ export function PopoverContent({ className, sideOffset = 10, ...props }: Compone
         sideOffset={sideOffset}
         collisionPadding={12}
         className={cn(
-          "z-50 rounded-xl border hairline bg-ink-850/90 p-3 text-sm text-paper shadow-float outline-none backdrop-blur-2xl",
+          "z-50 max-h-[var(--radix-popover-content-available-height)] overflow-y-auto overscroll-contain rounded-xl border hairline bg-ink-850/90 p-3 text-sm text-paper shadow-float outline-none backdrop-blur-2xl",
           "data-[state=open]:animate-fade-in",
           className,
         )}

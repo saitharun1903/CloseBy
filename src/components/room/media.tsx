@@ -69,12 +69,15 @@ export function ParticipantTile({
   className,
   compact,
   name,
+  labelStyle,
 }: {
   participant: Participant;
   isLocal: boolean;
   className?: string;
   compact?: boolean;
   name?: string;
+  /** Position override for the name tag (e.g. to sit above the control bar). */
+  labelStyle?: React.CSSProperties;
 }) {
   const mirror = useRoom((s) => s.sound.mirrorSelf);
   const track = cameraTrack(participant);
@@ -105,7 +108,7 @@ export function ParticipantTile({
           </span>
         </div>
       )}
-      <div className="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-16px)] items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1 backdrop-blur-md">
+      <div style={labelStyle} className="pointer-events-none absolute bottom-2 left-2 flex max-w-[calc(100%-16px)] items-center transition-[bottom] duration-300 gap-1.5 rounded-full bg-black/45 px-2.5 py-1 backdrop-blur-md">
         {micMuted && <MicOff className="size-3.5 shrink-0 text-white" aria-label="Microphone off" />}
         <span className="truncate text-[12px] font-semibold text-white">{isLocal ? "You" : display}</span>
         {!isLocal && <QualityBars q={participant.connectionQuality} />}

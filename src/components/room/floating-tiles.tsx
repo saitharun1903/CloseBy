@@ -47,6 +47,14 @@ export function FloatingTiles({
     local: { corner: "br", width: 0, minimized: false },
   });
   const [drag, setDrag] = useState<{ id: "remote" | "local"; x: number; y: number } | null>(null);
+  // Touch screens have no hover: a tap on a tile reveals its buttons for a few seconds.
+  const [tapped, setTapped] = useState<"remote" | "local" | null>(null);
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function reveal(id: "remote" | "local") {
+    setTapped(id);
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+    tapTimer.current = setTimeout(() => setTapped(null), 3500);
+  }
 
   useLayoutEffect(() => {
     const el = box.current;
@@ -111,6 +119,7 @@ export function FloatingTiles({
       el.removeEventListener("pointermove", onMove);
       el.removeEventListener("pointerup", onUp);
       el.removeEventListener("pointercancel", onUp);
+      if (!moved && ev.pointerType !== "mouse") reveal(id);
       if (moved) {
         const q = at(ev);
         setTiles((s) => ({ ...s, [id]: { ...s[id], corner: nearestCorner(q.x + p.w / 2, q.y + p.h / 2) } }));
@@ -175,7 +184,7 @@ export function FloatingTiles({
               ) : (
                 <>
                   <ParticipantTile participant={participant} isLocal={id === "local"} name={id === "remote" ? remoteName : undefined} className="rounded-2xl" compact />
-                  <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover/tile:opacity-100 [@media(hover:none)]:opacity-100">
+                  <div className={cn("absolute right-1.5 top-1.5 flex gap-1 transition-opacity focus-within:opacity-100 group-hover/tile:opacity-100", tapped === id ? "opacity-100" : "pointer-events-none opacity-0 [@media(hover:hover)]:pointer-events-auto")}>
                     {visible.length === 2 && (
                       <TileButton label="Swap camera positions" onClick={swap}>
                         <ArrowLeftRight />
@@ -195,7 +204,8 @@ export function FloatingTiles({
                     role="separator"
                     aria-label="Resize camera"
                     className={cn(
-                      "absolute size-5 opacity-0 transition-opacity group-hover/tile:opacity-100",
+                      "absolute size-7 opacity-0 transition-opacity group-hover/tile:opacity-100",
+                      tapped === id && "opacity-100",
                       resizeTop ? "top-0" : "bottom-0",
                       resizeLeft ? "left-0" : "right-0",
                       resizeTop === resizeLeft ? "cursor-nwse-resize" : "cursor-nesw-resize",

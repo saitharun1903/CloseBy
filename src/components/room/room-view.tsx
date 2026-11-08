@@ -1,6 +1,6 @@
 "use client";
 import type { Participant } from "livekit-client";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useDragControls } from "motion/react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -316,7 +316,7 @@ function Stage({ partner, partnerName, chromeHidden }: { partner?: Participant; 
         {contentNode}
         {main !== "faces" && <PingLayer />}
       </div>
-      {main === "faces" && <Faces partner={partner} partnerName={partnerName} split={pref === "face"} />}
+      {main === "faces" && <Faces partner={partner} partnerName={partnerName} split={pref === "face"} chromeHidden={chromeHidden} />}
       {main !== "faces" && (
         <FloatingTiles
           local={local}
@@ -332,7 +332,7 @@ function Stage({ partner, partnerName, chromeHidden }: { partner?: Participant; 
 }
 
 /** Call view: partner full-bleed with you in picture-in-picture (or split, if chosen). */
-function Faces({ partner, partnerName, split }: { partner?: Participant; partnerName?: string; split: boolean }) {
+function Faces({ partner, partnerName, split, chromeHidden }: { partner?: Participant; partnerName?: string; split: boolean; chromeHidden: boolean }) {
   const room = useLk();
   const local = room.localParticipant;
   const hideSelf = useRoom((s) => s.sound.hideSelf);
@@ -343,8 +343,10 @@ function Faces({ partner, partnerName, split }: { partner?: Participant; partner
         <div className="absolute inset-0 scale-105 opacity-50 blur-xl">
           <ParticipantTile participant={local} isLocal />
         </div>
-        <div className="absolute inset-0 grid place-items-center bg-black/30 px-4 pb-[calc(var(--safe-bottom)+96px)] pt-[calc(var(--safe-top)+64px)]">
-          <WaitingCard partnerName={partnerName} />
+        <div className="absolute inset-0 flex flex-col items-center overflow-y-auto bg-black/30 px-4 pb-[calc(var(--safe-bottom)+96px)] pt-[calc(var(--safe-top)+64px)] [@media(max-height:500px)]:pb-[calc(var(--safe-bottom)+84px)] [@media(max-height:500px)]:pt-[calc(var(--safe-top)+56px)]">
+          <div className="m-auto w-full max-w-[440px]">
+            <WaitingCard partnerName={partnerName} />
+          </div>
         </div>
       </div>
     );
@@ -365,7 +367,7 @@ function Faces({ partner, partnerName, split }: { partner?: Participant; partner
 
   return (
     <div className="absolute inset-0" data-testid="face-to-face">
-      <ParticipantTile participant={partner} isLocal={false} name={partnerName} />
+      <ParticipantTile participant={partner} isLocal={false} name={partnerName} labelStyle={{ bottom: chromeHidden ? "calc(var(--safe-bottom) + 12px)" : `calc(var(--safe-bottom) + ${BOTTOM_BAND + 4}px)`, left: 16 }} />
       {!hideSelf && <FloatingTiles local={local} remoteName={partnerName} insets={{ top: TOP_BAND, bottom: BOTTOM_BAND }} />}
     </div>
   );
@@ -373,6 +375,7 @@ function Faces({ partner, partnerName, split }: { partner?: Participant; partner
 
 function SidePanel({ desktop }: { desktop: boolean }) {
   const panel = useRoom((s) => s.panel);
+  const dragControls = useDragControls();
   const unread = useRoom((s) => s.unread);
   const tabs: { id: "chat" | "queue"; label: string }[] = [
     { id: "chat", label: "Chat" },
@@ -380,7 +383,7 @@ function SidePanel({ desktop }: { desktop: boolean }) {
   ];
   const body = (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-14 shrink-0 items-center gap-1 px-3" role="tablist" aria-label="Side panel">
+      <div className="flex h-14 shrink-0 touch-none items-center gap-1 px-3" role="tablist" aria-label="Side panel" onPointerDown={(e) => !(e.target as HTMLElement).closest("button") && dragControls.start(e)}>
         <div className="flex rounded-full bg-white/[0.07] p-1">
           {tabs.map((t) => (
             <button
@@ -433,10 +436,21 @@ function SidePanel({ desktop }: { desktop: boolean }) {
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 420, damping: 40 }}
-            className="fixed inset-x-0 bottom-0 z-50 h-[75dvh] overflow-hidden rounded-t-[28px] border-t hairline bg-ink-850 pb-[var(--safe-bottom)]"
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.8 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 110 || info.velocity.y > 600) useRoom.setState({ panel: null });
+            }}
+            className="fixed inset-x-0 bottom-0 z-50 h-[75dvh] overflow-hidden rounded-t-[28px] border-t hairline bg-ink-850 pb-[var(--safe-bottom)] [@media(max-height:500px)]:h-[92dvh]"
             aria-label="Chat and up next"
           >
-            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-white/20" aria-hidden />
+            {/* Grab here and swipe down to close. */}
+            <div className="flex h-5 cursor-grab touch-none items-center justify-center" onPointerDown={(e) => dragControls.start(e)} aria-hidden>
+              <div className="h-1 w-10 rounded-full bg-white/25" />
+            </div>
             {body}
           </motion.aside>
         </>

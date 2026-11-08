@@ -104,16 +104,16 @@ export function WaitingCard({ partnerName }: { partnerName?: string }) {
   const isHost = useRoom((s) => s.me.role === "host");
   const canShare = typeof navigator !== "undefined" && "share" in navigator;
   return (
-    <div className="glass w-full max-w-[440px] rounded-[28px] p-7 text-center" data-testid="waiting-card">
-      <div className="mx-auto mb-5 flex w-fit items-center" aria-hidden>
+    <div className="glass w-full min-w-0 rounded-[28px] p-6 text-center sm:p-7 [@media(max-height:500px)]:p-5" data-testid="waiting-card">
+      <div className="mx-auto mb-5 flex w-fit items-center [@media(max-height:500px)]:hidden" aria-hidden>
         <span className="size-11 rounded-full border-2 border-white/90" />
         <span className="-ml-3.5 size-11 animate-breathe rounded-full border-2 border-dashed border-white/50" />
       </div>
-      <h2 className="text-[24px] font-semibold tracking-[-0.025em] text-white">{partnerName ? `Waiting for ${partnerName}` : "Invite someone"}</h2>
+      <h2 className="text-[22px] sm:text-[24px] font-semibold tracking-[-0.025em] text-white">{partnerName ? `Waiting for ${partnerName}` : "Invite someone"}</h2>
       {isHost && inviteUrl && !partnerName ? (
         <>
           <p className="mx-auto mt-1.5 max-w-[340px] text-[14px] leading-relaxed text-white/65">Send this link to the one person you’d like to join. The room fits just the two of you.</p>
-          <div className="mt-6 space-y-3">
+          <div className="mt-5 space-y-3 [@media(max-height:500px)]:mt-3">
             <CopyInvite url={inviteUrl} />
             {canShare && (
               <Button variant="secondary" size="sm" onClick={() => void navigator.share({ title: "Join me on Closeby", url: inviteUrl }).catch(() => {})}>
