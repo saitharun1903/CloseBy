@@ -144,7 +144,15 @@ export const PEER_TOPICS = {
   reaction: "cb.react",
   ping: "cb.ping",
   media: "cb.media",
+  nudge: "cb.nudge",
+  timer: "cb.timer",
 } as const;
+
+/** "Thinking of you": buzzes the partner's phone. */
+export const nudgeSchema = z.object({ at: z.number() });
+/** Shared sleep timer. endsAt is server time (ms); null cancels. */
+export const sleepTimerSchema = z.object({ endsAt: z.number().nullable(), minutes: z.number().int().min(1).max(240).nullable() });
+export const SLEEP_TIMER_MINUTES = [15, 30, 45, 60, 90] as const;
 
 export const REACTIONS = ["❤️", "😂", "😮", "😢", "👏", "🍿"] as const;
 

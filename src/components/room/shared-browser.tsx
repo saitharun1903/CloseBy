@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { useController } from "./context";
 import { setSound, useRoom } from "./store";
 import { toast } from "@/components/toaster";
+import { useMediaVolume } from "./players/use-media-volume";
 
 type HB = { volume: number; playoutDelay: boolean; ping(): void; destroy(): void };
 
@@ -20,8 +21,7 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
   const hb = useRef<HB | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
-  const volume = useRoom((s) => s.sound.mediaVolume);
-  const muted = useRoom((s) => s.mediaMuted);
+  const { volume, muted } = useMediaVolume();
   const startedBy = useRoom((s) => s.participants.find((p) => p.id === s.browser.startedBy)?.displayName);
   const isMe = useRoom((s) => s.browser.startedBy === s.me.id);
   const [attempt, setAttempt] = useState(0);

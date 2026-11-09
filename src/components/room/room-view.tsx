@@ -21,6 +21,7 @@ import { SharedBrowser } from "./shared-browser";
 import { AudioBlockedBanner, ConnectionOverlay, PingLayer, ReactionsLayer, ScreenStage, TopBar, WaitingCard } from "./stage-parts";
 import { initRoomStore, useRoom, type LayoutPref } from "./store";
 import { WatchPicker } from "./watch-picker";
+import { useWakeLock } from "./use-wake-lock";
 import { YouTubeHub } from "./youtube-hub";
 
 export function RoomView({ initial, media, onLeft }: { initial: RoomStateDTO; media: InitialMedia; onLeft: (seatKept: boolean) => void }) {
@@ -66,6 +67,8 @@ function RoomShell({ onLeft }: { onLeft: (seatKept: boolean) => void }) {
   const browserOn = useRoom((s) => s.browser.active);
   const desktop = useMediaQuery("(min-width: 1024px)", true);
   const rootRef = useRef<HTMLDivElement>(null);
+  // Don't let the screen sleep while you're together.
+  useWakeLock(conn === "connected" || conn === "reconnecting");
   const [immersive, setImmersive] = useState(false);
   const [idle, setIdle] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);

@@ -1,7 +1,7 @@
 "use client";
 import { ConnectionQuality, type Participant, Track } from "livekit-client";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, Copy, Lock, MonitorOff, Share, Volume2, VolumeX, WifiOff } from "lucide-react";
+import { Check, Copy, Lock, MonitorOff, Share, Volume2, VolumeX, WifiOff, Moon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LogoMark } from "@/components/logo";
 import { toast } from "@/components/toaster";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { useController, useLk } from "./context";
 import { participantHue, QualityBars, screenTrack, TrackVideo } from "./media";
+import { SleepCountdown } from "./control-bar";
 import { useRoom } from "./store";
 
 function useRemaining(expiresAt: string) {
@@ -32,6 +33,7 @@ export function TopBar({ partner, partnerName }: { partner?: Participant; partne
   const nowTitle = useRoom((s) => s.queue.find((q) => q.id === s.playback.mediaId)?.title);
   const browserOn = useRoom((s) => s.browser.active);
   const remaining = useRemaining(expiresAt);
+  const sleepTimer = useRoom((s) => s.sleepTimer);
   const activity = browserOn ? "Browsing together" : nowTitle ? `Watching · ${nowTitle}` : partner ? "Connected" : null;
   return (
     <div className="flex items-center gap-2 px-3 pt-3 sm:px-4">
@@ -56,6 +58,12 @@ export function TopBar({ partner, partnerName }: { partner?: Participant; partne
         {conn === "reconnecting" && (
           <span className="glass flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium text-caution" role="status">
             <WifiOff className="size-3.5" /> Reconnecting…
+          </span>
+        )}
+        {sleepTimer && (
+          <span className="glass flex items-center gap-1.5 rounded-full px-3 py-1.5 font-mono text-[12px] font-medium text-white/85" title="Sleep timer: pauses for both of you" data-testid="sleep-chip">
+            <Moon className="size-3.5" />
+            <SleepCountdown endsAt={sleepTimer.endsAt} short />
           </span>
         )}
         <span className="glass hidden rounded-full px-3 py-1.5 text-[12px] text-white/70 lg:inline" title={`Room ${roomId}`}>
