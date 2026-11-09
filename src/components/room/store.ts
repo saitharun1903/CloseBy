@@ -57,6 +57,10 @@ export interface RoomStore {
   reactions: FloatingReaction[];
   pings: Ping[];
   partnerMedia: MediaReady | null;
+  /** Someone is talking right now (drives auto-lowering of the film). */
+  talking: boolean;
+  /** Shared sleep timer (server-time deadline) and who set it. */
+  sleepTimer: { endsAt: number; minutes: number; byMe: boolean } | null;
   sync: SyncState;
   layoutPref: LayoutPref;
   sound: SoundPrefs;
@@ -97,6 +101,8 @@ export function initRoomStore(s: RoomStateDTO) {
       reactions: [],
       pings: [],
       partnerMedia: null,
+      talking: false,
+      sleepTimer: null,
       sync: "idle",
       layoutPref: "auto",
       sound: loadSoundPrefs(),

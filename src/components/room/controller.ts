@@ -13,12 +13,14 @@ import {
   type Participant, AudioPresets } from "livekit-client";
 import { toast } from "@/components/toaster";
 import { api, ApiRequestError } from "@/lib/api";
-import { estimateClockOffset, isNewer, type ClockSample, type PlaybackIntent, type PlaybackState } from "@/lib/playback";
+import { estimateClockOffset, expectedPosition, isNewer, type ClockSample, type PlaybackIntent, type PlaybackState } from "@/lib/playback";
 import {
   chatHistorySchema,
   chatMessageSchema,
   mediaReadySchema,
+  nudgeSchema,
   PEER_TOPICS,
+  sleepTimerSchema,
   pingSchema,
   reactionSchema,
   SERVER_TOPIC,
@@ -28,7 +30,7 @@ import {
   type RoomStateDTO,
   type ServerMessage,
 } from "@/lib/protocol";
-import { useRoom } from "./store";
+import { serverNow, useRoom } from "./store";
 import { takeToken } from "./token-cache";
 import { browserProfile, nearestBrowserRegion } from "./browser-profile";
 
@@ -79,6 +81,9 @@ export class RoomController {
   private disposed = false;
   private clockTimer?: ReturnType<typeof setInterval>;
   private chatTimer?: ReturnType<typeof setInterval>;
+  private sleepTimeout?: ReturnType<typeof setTimeout>;
+  private talkRelease?: ReturnType<typeof setTimeout>;
+  private lastNudgeAt = 0;
   private stateTimer?: ReturnType<typeof setInterval>;
   private retry = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
@@ -216,6 +221,8 @@ export class RoomController {
     this.disposed = true;
     clearInterval(this.clockTimer);
     clearInterval(this.chatTimer);
+    clearTimeout(this.sleepTimeout);
+    clearTimeout(this.talkRelease);
     clearInterval(this.stateTimer);
     document.removeEventListener("visibilitychange", this.onVisible);
     clearTimeout(this.retryTimer);
@@ -418,6 +425,58 @@ export class RoomController {
     void this.publish(PEER_TOPICS.reaction, { emoji }, { reliable: false });
   }
 
+  /** "Thinking of you": hearts on both screens, and the partner's phone buzzes. */
+  sendNudge() {
+    const now = Date.now();
+    if (now - this.lastNudgeAt < 2500) return;
+    this.lastNudgeAt = now;
+    this.heartBurst(true);
+    void this.publish(PEER_TOPICS.nudge, { at: now });
+  }
+
+  private heartBurst(mine: boolean) {
+    for (let i = 0; i < 5; i++) setTimeout(() => this.showReaction("❤️", mine), i * 120);
+  }
+
+  /** Sleep timer for both: pauses the film (or closes the shared browser) when it runs out. */
+  setSleepTimer(minutes: number | null) {
+    const endsAt = minutes ? serverNow() + minutes * 60_000 : null;
+    this.applySleepTimer(endsAt, minutes, true);
+    void this.publish(PEER_TOPICS.timer, { endsAt, minutes });
+  }
+
+  private applySleepTimer(endsAt: number | null, minutes: number | null, byMe: boolean) {
+    clearTimeout(this.sleepTimeout);
+    if (!endsAt || !minutes || endsAt <= serverNow()) {
+      useRoom.setState({ sleepTimer: null });
+      return;
+    }
+    useRoom.setState({ sleepTimer: { endsAt, minutes, byMe } });
+    this.sleepTimeout = setTimeout(() => void this.sleepTimerDone(), endsAt - serverNow());
+  }
+
+  private async sleepTimerDone() {
+    useRoom.setState({ sleepTimer: null });
+    const s = useRoom.getState();
+    // Both sides try; the server keeps it to one change.
+    if (s.playback.mediaId && s.playback.status === "playing") await this.sendIntent({ type: "pause", positionSec: expectedPosition(s.playback, serverNow()) }).catch(() => {});
+    if (s.browser.active) await this.stopBrowser().catch(() => {});
+    toast({ title: "Sleep timer", body: "Paused for both of you. Goodnight 🌙" });
+  }
+
+  /** Lower the film while anyone with their mic on is talking; let it back up shortly after. */
+  private onSpeakers = (speakers: Participant[]) => {
+    this.bump();
+    const talking = speakers.some((p) => p.isMicrophoneEnabled);
+    if (talking) {
+      clearTimeout(this.talkRelease);
+      if (!useRoom.getState().talking) useRoom.setState({ talking: true });
+    } else {
+      clearTimeout(this.talkRelease);
+      this.talkRelease = setTimeout(() => useRoom.setState({ talking: false }), 1200);
+    }
+  };
+
   sendPing(x: number, y: number) {
     this.showPing(x, y, true);
     void this.publish(PEER_TOPICS.ping, { x, y }, { reliable: false });
@@ -497,6 +556,27 @@ export class RoomController {
         if (m.success) useRoom.setState({ partnerMedia: m.data });
         break;
       }
+      case PEER_TOPICS.nudge: {
+        if (!nudgeSchema.safeParse(data).success) return;
+        this.heartBurst(false);
+        try {
+          navigator.vibrate?.([90, 70, 90]);
+        } catch {
+          /* not supported */
+        }
+        toast({ title: `${this.partnerName() ?? "Your partner"} is thinking of you`, body: "❤️" });
+        break;
+      }
+      case PEER_TOPICS.timer: {
+        const t = sleepTimerSchema.safeParse(data);
+        if (!t.success) return;
+        const had = useRoom.getState().sleepTimer;
+        this.applySleepTimer(t.data.endsAt, t.data.minutes, false);
+        const who = this.partnerName() ?? "Your partner";
+        if (t.data.minutes) toast({ title: `${who} set a sleep timer`, body: `Playback pauses for both of you in ${t.data.minutes} min.` });
+        else if (had) toast({ title: `${who} turned off the sleep timer` });
+        break;
+      }
     }
   };
 
@@ -522,6 +602,9 @@ export class RoomController {
         const chat = useRoom.getState().chat.map(({ id, text, sentAt, from }) => ({ id, text, sentAt, from }));
         if (chat.length) void this.publish(PEER_TOPICS.chatHistory, { messages: chat }, { to: [p.identity] });
         if (this.lastMediaReady) void this.publish(PEER_TOPICS.media, this.lastMediaReady, { to: [p.identity] });
+        // A partner who (re)joins gets the running sleep timer too.
+        const timer = useRoom.getState().sleepTimer;
+        if (timer) void this.publish(PEER_TOPICS.timer, { endsAt: timer.endsAt, minutes: timer.minutes }, { to: [p.identity] });
       })
       .on(RoomEvent.ParticipantDisconnected, () => {
         useRoom.setState({ partnerMedia: null });
@@ -538,7 +621,7 @@ export class RoomController {
         if (pub.source === Track.Source.ScreenShare) useRoom.setState({ myShareAudio: "none" });
         this.bump();
       })
-      .on(RoomEvent.ActiveSpeakersChanged, this.bump)
+      .on(RoomEvent.ActiveSpeakersChanged, this.onSpeakers)
       .on(RoomEvent.ConnectionQualityChanged, this.bump)
       .on(RoomEvent.ActiveDeviceChanged, this.bump)
       .on(RoomEvent.AudioPlaybackStatusChanged, () => useRoom.setState({ audioBlocked: !room.canPlaybackAudio }))

@@ -14,6 +14,7 @@ import type { MediaAdapter } from "./adapter";
 import { PlayerControls } from "./controls";
 import { usePlayerChrome } from "./use-player-chrome";
 import { useSyncEngine } from "./use-sync";
+import { useMediaVolume } from "./use-media-volume";
 
 function useSource(item: QueueItemDTO, file: File | undefined) {
   // Created and revoked in the same effect so StrictMode's double-mount can't leave a dead URL.
@@ -34,8 +35,7 @@ function useSource(item: QueueItemDTO, file: File | undefined) {
 export function Html5Player({ item, mode, onExpand }: { item: QueueItemDTO; mode: "main" | "mini"; onExpand: () => void }) {
   const c = useController();
   const file = useRoom((s) => s.localFiles[item.id]);
-  const sound = useRoom((s) => s.sound);
-  const mediaMuted = useRoom((s) => s.mediaMuted);
+  const { volume: mediaVolume, muted: mediaMuted } = useMediaVolume();
   const playback = useRoom((s) => s.playback);
   const src = useSource(item, file);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -92,9 +92,9 @@ export function Html5Player({ item, mode, onExpand }: { item: QueueItemDTO; mode
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    v.volume = sound.mediaVolume;
+    v.volume = mediaVolume;
     v.muted = mediaMuted;
-  }, [sound.mediaVolume, mediaMuted, src]);
+  }, [mediaVolume, mediaMuted, src]);
 
   useEffect(() => {
     c.announceMedia({ mediaId: item.id, ready: !!src && loaded && !error, fileName: file?.name ?? null, fileSize: file?.size ?? null, durationSec: duration || null });
@@ -148,7 +148,7 @@ export function Html5Player({ item, mode, onExpand }: { item: QueueItemDTO; mode
           onLoadedMetadata={(e) => {
             const v = e.currentTarget;
             setDuration(Number.isFinite(v.duration) ? v.duration : (item.durationSec ?? 0));
-            v.volume = sound.mediaVolume;
+            v.volume = mediaVolume;
             v.muted = mediaMuted;
             setLoaded(true);
           }}

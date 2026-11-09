@@ -70,6 +70,17 @@ Legend: **✅ Auto** — implemented and covered by automated tests that were ru
 | Responsive mobile/tablet, safe areas, bottom-sheet panel | ✅ Auto (compact, no overflow) · 🧪 Manual (#10–11) |
 | Keyboard: Space/K, ←/→, F, ⌘D, ⌘E | ✅ Auto (→ seek) · rest ✅ Impl |
 
+## Together extras
+| Feature | Status |
+| --- | --- |
+| Nudge ("thinking of you"): hearts on both screens, partner's phone vibrates | ✅ Auto (delivery) · vibration 🧪 Manual (phones) |
+| Shared sleep timer (15 min–1½ h): countdown for both, either can cancel, pauses video / closes shared browser | ✅ Auto (sync + cancel) · expiry ✅ Impl |
+| Auto-lower the video while either person talks (smooth fade, can be switched off) | ✅ Auto |
+| Pop out partner's camera (Picture-in-Picture) | ✅ Impl · 🧪 Manual per browser |
+| Screen stays awake in the room (Wake Lock) | ✅ Impl · 🧪 Manual (phones/tablets) |
+| Install as an app (manifest, icons, standalone, iOS home-screen) | ✅ Auto (manifest + icons served) |
+| Shared browser: smooth-playback mode, nearest region, keep-alive through long films | ✅ Impl · 🧪 Manual (needs Hyperbeam) |
+
 ## Security & ops
 | Feature | Status |
 | --- | --- |

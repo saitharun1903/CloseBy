@@ -37,6 +37,8 @@ export interface SoundPrefs {
   hideSelf: boolean;
   /** Shared browser: buffer slightly for smooth video (on unless switched off). */
   smoothBrowser?: boolean;
+  /** Lower the film while either of you is talking (on unless switched off). */
+  autoDuck?: boolean;
 }
 export const loadSoundPrefs = (): SoundPrefs => read("sound", { mediaVolume: 0.8, voiceVolume: 1, mirrorSelf: true, hideSelf: false });
 export const saveSoundPrefs = (p: SoundPrefs) => write("sound", p);

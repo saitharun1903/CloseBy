@@ -2,6 +2,7 @@
 import { Room, Track } from "livekit-client";
 import {
   Loader,
+  Moon,
   Columns2,
   Ellipsis,
   Headphones,
@@ -36,8 +37,10 @@ import { cn } from "@/lib/cn";
 import { REACTIONS } from "@/lib/protocol";
 import { useController, useLk } from "./context";
 import { MicMeter } from "./mic-meter";
-import { setSound, useRoom, type LayoutPref } from "./store";
+import { serverNow, setSound, useRoom, type LayoutPref } from "./store";
 import { toast } from "@/components/toaster";
+import { canPopOut, popOutPartner } from "./pip";
+import { SLEEP_TIMER_MINUTES } from "@/lib/protocol";
 
 type CtlProps = {
   label: string;
@@ -199,6 +202,26 @@ export function ControlBar({ immersive, onToggleImmersive, onLeave }: { immersiv
   );
 }
 
+/** "Thinking of you": hearts for both, and your partner's phone buzzes. */
+function NudgeButton({ wide }: { wide?: boolean }) {
+  const c = useController();
+  const hasPartner = useLk().remoteParticipants.size > 0;
+  return (
+    <button
+      onClick={() => c.sendNudge()}
+      disabled={!hasPartner}
+      className={cn(
+        "flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#ff2d55] px-4 text-[13px] font-semibold text-white transition-transform hover:bg-[#ff4d6d] active:scale-95 disabled:opacity-40",
+        wide && "w-full",
+      )}
+      title="Send a nudge: hearts on both screens, and their phone buzzes"
+      data-testid="nudge"
+    >
+      <Heart className="size-4 fill-current" /> Nudge
+    </button>
+  );
+}
+
 function ReactionsButton() {
   const c = useController();
   return (
@@ -206,12 +229,17 @@ function ReactionsButton() {
     <PopoverCtl
       label="React"
       testId="ctl-react"
-      contentClass="flex gap-1 rounded-full p-1.5"
-      content={REACTIONS.map((e) => (
-        <button key={e} onClick={() => c.sendReaction(e)} className="grid size-11 place-items-center rounded-full text-[24px] transition-transform hover:scale-110 hover:bg-white/10 active:scale-95" aria-label={`Send ${e}`}>
-          {e}
-        </button>
-      ))}
+      contentClass="flex items-center gap-1 rounded-full p-1.5"
+      content={
+        <>
+          {REACTIONS.map((e) => (
+            <button key={e} onClick={() => c.sendReaction(e)} className="grid size-11 place-items-center rounded-full text-[24px] transition-transform hover:scale-110 hover:bg-white/10 active:scale-95" aria-label={`Send ${e}`}>
+              {e}
+            </button>
+          ))}
+          <NudgeButton />
+        </>
+      }
     >
       <Heart />
     </PopoverCtl>
@@ -235,6 +263,9 @@ function MoreButton({ immersive, onToggleImmersive, onQueue }: { immersive: bool
   const mediaMuted = useRoom((s) => s.mediaMuted);
   const partnerName = useRoom((s) => s.participants.find((p) => p.id !== s.me.id)?.displayName ?? "Partner");
   const [open, setOpen] = useState(false);
+  const [popOutOk, setPopOutOk] = useState(false);
+  useEffect(() => setPopOutOk(canPopOut()), []);
+  const hasPartnerVideo = [...room.remoteParticipants.values()].some((p) => p.isCameraEnabled);
   const [devices, setDevices] = useState<Record<MediaDeviceKind, MediaDeviceInfo[]>>({ audioinput: [], videoinput: [], audiooutput: [] });
 
   useEffect(() => {
@@ -259,18 +290,29 @@ function MoreButton({ immersive, onToggleImmersive, onQueue }: { immersive: bool
       contentClass="w-[340px] max-h-[70dvh] overflow-y-auto p-0 scrollbar-quiet"
       content={
         <div className="divide-y divide-white/[0.07]">
-          <section className="flex justify-between p-3 min-[401px]:hidden" aria-label="Reactions">
-            {REACTIONS.map((e) => (
-              <button key={e} onClick={() => c.sendReaction(e)} className="grid size-10 place-items-center rounded-full text-[22px] hover:bg-white/10" aria-label={`Send ${e}`}>
-                {e}
-              </button>
-            ))}
+          <section className="space-y-2 p-3 min-[401px]:hidden" aria-label="Reactions">
+            <div className="flex justify-between">
+              {REACTIONS.map((e) => (
+                <button key={e} onClick={() => c.sendReaction(e)} className="grid size-10 place-items-center rounded-full text-[22px] hover:bg-white/10" aria-label={`Send ${e}`}>
+                  {e}
+                </button>
+              ))}
+            </div>
+            <NudgeButton wide />
           </section>
           <section className="p-4">
             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-paper-faint">Volume · only what you hear</h3>
             <VolumeRow label="Video & shared sound" value={mediaMuted ? 0 : sound.mediaVolume} onChange={(v) => { setSound({ mediaVolume: v }); useRoom.setState({ mediaMuted: false }); }} testId="vol-media" />
             <VolumeRow label={`${partnerName}’s voice`} value={sound.voiceVolume} onChange={(v) => setSound({ voiceVolume: v })} testId="vol-voice" />
+            <label className="-mx-2 mt-2 flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-[14px] hover:bg-white/10">
+              <span className="flex-1">
+                Lower the video when someone talks
+                <span className="block text-[12px] text-paper-faint">Comes back up when you stop</span>
+              </span>
+              <Switch checked={sound.autoDuck !== false} onCheckedChange={(v) => setSound({ autoDuck: v })} aria-label="Lower the video when someone talks" data-testid="auto-duck" />
+            </label>
           </section>
+          <SleepTimerSection />
           <section className="p-2">
             <h3 className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-paper-faint">Layout</h3>
             <div className="grid grid-cols-5 gap-1">
@@ -300,6 +342,21 @@ function MoreButton({ immersive, onToggleImmersive, onQueue }: { immersive: bool
                 <ListVideo className="size-5 text-paper-dim" /> Up next
               </button>
             </PopoverClose>
+            {popOutOk && hasPartnerVideo && (
+              <PopoverClose asChild>
+                <button
+                  onClick={() => void popOutPartner().then((r) => r !== "ok" && toast({ title: "Couldn’t pop out the camera", body: "Your browser doesn’t allow it here." }))}
+                  className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left text-[14px] hover:bg-white/10"
+                  data-testid="pop-out"
+                >
+                  <PictureInPicture2 className="size-5 text-paper-dim" />
+                  <span className="flex-1">
+                    Pop out {partnerName}’s camera
+                    <span className="block text-[12px] text-paper-faint">Keep seeing them in other apps and tabs</span>
+                  </span>
+                </button>
+              </PopoverClose>
+            )}
             <label className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-[14px] hover:bg-white/10">
               <span className="flex-1">Show my camera</span>
               <Switch checked={!sound.hideSelf} onCheckedChange={(v) => setSound({ hideSelf: !v })} aria-label="Show my camera" />
@@ -379,4 +436,54 @@ export function LeaveDialog({ open, onOpenChange, isHost, onLeave, onEnd }: { op
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Sleep timer for both of you: pauses playback when it runs out. */
+function SleepTimerSection() {
+  const c = useController();
+  const timer = useRoom((s) => s.sleepTimer);
+  const watching = useRoom((s) => !!s.playback.mediaId || s.browser.active);
+  return (
+    <section className="p-4" aria-label="Sleep timer">
+      <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-paper-faint">
+        <Moon className="size-3.5" /> Sleep timer · for both of you
+      </h3>
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
+        {SLEEP_TIMER_MINUTES.map((m) => (
+          <button
+            key={m}
+            onClick={() => c.setSleepTimer(m)}
+            className={cn(
+              "h-8 rounded-full px-3 text-[13px] font-semibold transition-colors",
+              timer?.minutes === m ? "bg-white text-black" : "bg-white/[0.08] text-paper hover:bg-white/[0.14]",
+            )}
+            data-testid={`sleep-${m}`}
+          >
+            {m < 60 ? `${m} min` : `${m / 60} h`.replace("1.5 h", "1½ h")}
+          </button>
+        ))}
+        {timer && (
+          <button onClick={() => c.setSleepTimer(null)} className="h-8 rounded-full px-3 text-[13px] font-semibold text-danger hover:bg-white/[0.08]" data-testid="sleep-off">
+            Off
+          </button>
+        )}
+      </div>
+      <p className="mt-2 text-[12px] leading-snug text-paper-faint">
+        {timer ? <SleepCountdown endsAt={timer.endsAt} /> : watching ? "Pauses the video for both of you when time’s up." : "Start something to watch, then set a timer to fall asleep together."}
+      </p>
+    </section>
+  );
+}
+
+export function SleepCountdown({ endsAt, short }: { endsAt: number; short?: boolean }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const left = Math.max(0, endsAt - serverNow());
+  const m = Math.floor(left / 60_000);
+  const s = Math.floor((left % 60_000) / 1000);
+  const clock = `${m}:${String(s).padStart(2, "0")}`;
+  return <>{short ? clock : `Pausing for both of you in ${clock}`}</>;
 }

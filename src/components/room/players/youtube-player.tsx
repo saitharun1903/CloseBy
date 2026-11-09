@@ -10,6 +10,7 @@ import { PlayerControls } from "./controls";
 import { TapToPlay } from "./html5-player";
 import { usePlayerChrome } from "./use-player-chrome";
 import { useSyncEngine } from "./use-sync";
+import { useMediaVolume } from "./use-media-volume";
 import { explainYouTubeError, loadYouTubeApi, YT_STATE, type YTPlayer } from "./youtube-api";
 
 /**
@@ -30,8 +31,7 @@ export function YouTubePlayer({ item, mode, onExpand }: { item: QueueItemDTO; mo
   const [scrub, setScrub] = useState<number | null>(null);
   const [buffering, setBuffering] = useState(false);
   const playback = useRoom((s) => s.playback);
-  const volume = useRoom((s) => s.sound.mediaVolume);
-  const muted = useRoom((s) => s.mediaMuted);
+  const { volume, muted } = useMediaVolume();
   const playing = playback.status === "playing";
 
   adapter.current ??= {
