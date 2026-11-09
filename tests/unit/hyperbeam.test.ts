@@ -19,6 +19,8 @@ describe("hyperbeam provider", () => {
     const p = createHyperbeamProvider("k", fakeFetch(sent));
     const s = await p.start({ roomId: "r", startUrl: "https://www.youtube.com", region: "AS", profile: "new" });
     expect(sent[0]!.profile).toBe(true);
+    // Pointer isn't baked into the video (it would lag a full round trip).
+    expect(sent[0]!.hide_cursor).toBe(true);
     expect(s.profileId).toBe("sess-1234abcd");
   });
 

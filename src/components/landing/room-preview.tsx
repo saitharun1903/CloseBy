@@ -8,15 +8,15 @@ import { Ellipsis, Heart, MessageSquare, Mic, PhoneOff, Tv, Video } from "lucide
 export function RoomPreview() {
   return (
     <figure className="relative" aria-label="A Closeby room: a video playing full screen, both people's cameras in the corner, and call controls floating at the bottom">
-      <div aria-hidden className="relative overflow-hidden rounded-[28px] bg-black shadow-[0_40px_120px_-30px_rgb(10_132_255/0.25),0_30px_80px_-20px_rgb(0_0_0/0.9)] ring-1 ring-white/10">
+      <div aria-hidden className="relative overflow-hidden rounded-[28px] bg-black shadow-[0_50px_140px_-30px_rgb(255_179_107/0.35),0_30px_80px_-20px_rgb(0_0_0/0.9)] ring-1 ring-[#ffd3a1]/15">
         <div className="relative aspect-[16/10] w-full overflow-hidden">
           {/* abstract scene */}
-          <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_30%_10%,#2a3a8f_0%,#14183a_45%,#07070c_100%)]" />
-          <div className="absolute -left-[10%] top-[30%] h-[70%] w-[70%] rounded-full bg-[#ff7a59]/30 blur-[60px]" />
-          <div className="absolute right-[5%] top-[10%] h-[50%] w-[45%] rounded-full bg-[#7b5cff]/35 blur-[70px]" />
+          <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_30%_10%,#8a4b2c_0%,#3a1c14_42%,#0a0605_100%)]" />
+          <div className="absolute -left-[10%] top-[30%] h-[70%] w-[70%] rounded-full bg-[#ff6a3d]/35 blur-[60px]" />
+          <div className="absolute right-[5%] top-[10%] h-[50%] w-[45%] rounded-full bg-[#ffc27a]/30 blur-[70px]" />
           <svg viewBox="0 0 160 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-            <path d="M0 72 C 30 62, 52 68, 80 60 S 130 56, 160 64 L160 100 L0 100Z" fill="#0b0b18" opacity="0.85" />
-            <path d="M0 82 C 34 76, 70 84, 104 78 S 140 76, 160 80 L160 100 L0 100Z" fill="#050509" />
+            <path d="M0 72 C 30 62, 52 68, 80 60 S 130 56, 160 64 L160 100 L0 100Z" fill="#140a07" opacity="0.85" />
+            <path d="M0 82 C 34 76, 70 84, 104 78 S 140 76, 160 80 L160 100 L0 100Z" fill="#060403" />
           </svg>
 
           {/* top pills */}
