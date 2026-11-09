@@ -62,6 +62,9 @@ export function createHyperbeamProvider(rawKey: string, f: typeof fetch = fetch)
             width: 1280,
             height: 720,
             quality: { mode: "smooth" },
+            // Don't draw the pointer into the video: each person sees their own
+            // pointer instantly, and we draw the partner's on top (onCursor).
+            hide_cursor: true,
             // Saved profile keeps Google/YouTube sign-ins between sessions.
             ...(profile ? { profile: profile === "new" ? true : profile } : {}),
           }),
