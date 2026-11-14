@@ -87,6 +87,11 @@ Legend: **✅ Auto** — implemented and covered by automated tests that were ru
 | "3-2-1" countdown start, shown on both screens, then plays for both | ✅ Auto |
 | Chat: partner typing indicator; messages float over the call while chat is closed | ✅ Auto |
 | Keyboard shortcuts guide (?) | ✅ Auto |
+| Draw together: live strokes on both screens, fading; off over YouTube's player | ✅ Auto (ink reaches the partner) |
+| "Ask each other" question cards, same card on both screens, either flips/closes | ✅ Auto |
+| Reaction moments pinned to the film timeline for both; tap to jump there for both | ✅ Auto (pins on both) |
+| Pop out the film (picture-in-picture) for files and links | ✅ Impl · 🧪 Manual per browser |
+| Tonight's recap on leaving (time together, films, reactions, photos) | ✅ Auto |
 | Ambient light: the room glows with the colours on screen (files, links, shared browser, screen share; YouTube uses its thumbnail); switchable | ✅ Auto (shown + switch) |
 | Shared browser: smooth-playback mode, nearest region, keep-alive through long films | ✅ Impl · 🧪 Manual (needs Hyperbeam) |
 

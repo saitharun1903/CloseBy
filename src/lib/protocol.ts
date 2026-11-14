@@ -149,7 +149,18 @@ export const PEER_TOPICS = {
   typing: "cb.typing",
   countdown: "cb.countdown",
   snap: "cb.snap",
+  draw: "cb.draw",
+  card: "cb.card",
 } as const;
+
+/** A piece of a drawn stroke: points are fractions (0–1) of the stage. */
+export const drawSchema = z.object({
+  id: z.string().min(1).max(32),
+  pts: z.array(z.tuple([z.number().min(0).max(1), z.number().min(0).max(1)])).min(1).max(64),
+  end: z.boolean().optional(),
+});
+/** "Ask each other": which question card is showing (null closes it). */
+export const cardSchema = z.object({ i: z.number().int().min(0).max(10_000).nullable() });
 
 export const typingSchema = z.object({ on: z.boolean() });
 /** "3-2-1": playback starts for both at this server time (ms). */
@@ -176,7 +187,12 @@ export const chatHistorySchema = z.object({
   messages: z.array(chatMessageSchema.extend({ from: z.string().max(64) })).max(200),
 });
 
-export const reactionSchema = z.object({ emoji: z.enum(REACTIONS) });
+export const reactionSchema = z.object({
+  emoji: z.enum(REACTIONS),
+  /** When sent during a film: which one, and where in it (a "moment"). */
+  mid: z.string().max(64).optional(),
+  t: z.number().min(0).max(1e6).optional(),
+});
 export const pingSchema = z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) });
 export const mediaReadySchema = z.object({
   mediaId: z.string().nullable(),

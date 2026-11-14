@@ -23,7 +23,8 @@ import { initRoomStore, useRoom, type LayoutPref } from "./store";
 import { WatchPicker } from "./watch-picker";
 import { useWakeLock } from "./use-wake-lock";
 import { AmbientLight } from "./ambient-light";
-import { ChatBubbles, CountdownOverlay, ShortcutsHelp } from "./overlays";
+import { ChatBubbles, CountdownOverlay, QuestionCard, ShortcutsHelp } from "./overlays";
+import { DrawLayer } from "./draw-layer";
 import { PhotoBooth } from "./photo-booth";
 import { YouTubeHub } from "./youtube-hub";
 
@@ -71,6 +72,7 @@ function RoomShell({ onLeft }: { onLeft: (seatKept: boolean) => void }) {
   const hasMedia = useRoom((s) => !!s.playback.mediaId);
   const youTubeOnStage = useRoom((s) => s.queue.find((q) => q.id === s.playback.mediaId)?.kind === "youtube");
   const desktop = useMediaQuery("(min-width: 1024px)", true);
+  const portrait = useMediaQuery("(orientation: portrait)");
   const rootRef = useRef<HTMLDivElement>(null);
   // Don't let the screen sleep while you're together.
   useWakeLock(conn === "connected" || conn === "reconnecting");
@@ -148,6 +150,8 @@ function RoomShell({ onLeft }: { onLeft: (seatKept: boolean) => void }) {
       <PartnerAudio />
       <div className="absolute inset-0 transition-[right] duration-300 ease-[cubic-bezier(.25,1,.5,1)]" style={{ right: panelInset }}>
         <Stage partner={partner} partnerName={partnerDTO?.displayName} chromeHidden={chromeHidden} />
+        <DrawLayer blocked={youTubeOnStage} />
+        <QuestionCard placement={youTubeOnStage ? (!desktop && portrait ? "bottom" : "rail") : "top"} />
         <CountdownOverlay overPlayer={youTubeOnStage} />
         <ChatBubbles bottom={BOTTOM_BAND + (hasMedia ? 96 : 16)} />
         <AudioBlockedBanner />
