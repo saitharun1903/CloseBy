@@ -146,7 +146,16 @@ export const PEER_TOPICS = {
   media: "cb.media",
   nudge: "cb.nudge",
   timer: "cb.timer",
+  typing: "cb.typing",
+  countdown: "cb.countdown",
+  snap: "cb.snap",
 } as const;
+
+export const typingSchema = z.object({ on: z.boolean() });
+/** "3-2-1": playback starts for both at this server time (ms). */
+export const countdownSchema = z.object({ at: z.number() });
+/** Photo booth: both take the keepsake photo at once. */
+export const snapSchema = z.object({ at: z.number() });
 
 /** "Thinking of you": buzzes the partner's phone. */
 export const nudgeSchema = z.object({ at: z.number() });

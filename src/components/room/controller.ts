@@ -18,8 +18,11 @@ import {
   chatHistorySchema,
   chatMessageSchema,
   mediaReadySchema,
+  countdownSchema,
   nudgeSchema,
   PEER_TOPICS,
+  snapSchema,
+  typingSchema,
   sleepTimerSchema,
   pingSchema,
   reactionSchema,
@@ -84,6 +87,10 @@ export class RoomController {
   private sleepTimeout?: ReturnType<typeof setTimeout>;
   private talkRelease?: ReturnType<typeof setTimeout>;
   private lastNudgeAt = 0;
+  private lastTypingAt = 0;
+  private typingTimer?: ReturnType<typeof setTimeout>;
+  private countdownTimer?: ReturnType<typeof setTimeout>;
+  private lastSnapAt = 0;
   private stateTimer?: ReturnType<typeof setInterval>;
   private retry = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
@@ -223,6 +230,8 @@ export class RoomController {
     clearInterval(this.chatTimer);
     clearTimeout(this.sleepTimeout);
     clearTimeout(this.talkRelease);
+    clearTimeout(this.typingTimer);
+    clearTimeout(this.countdownTimer);
     clearInterval(this.stateTimer);
     document.removeEventListener("visibilitychange", this.onVisible);
     clearTimeout(this.retryTimer);
@@ -447,6 +456,45 @@ export class RoomController {
     for (let i = 0; i < 5; i++) setTimeout(() => this.showReaction("❤️", mine), i * 120);
   }
 
+  /** Tell the partner we're typing (at most every 2 s). */
+  sendTyping() {
+    const now = Date.now();
+    if (now - this.lastTypingAt < 2000) return;
+    this.lastTypingAt = now;
+    void this.publish(PEER_TOPICS.typing, { on: true }, { reliable: false });
+  }
+
+  /** "3-2-1": a countdown on both screens, then playback starts for both. */
+  startCountdown() {
+    const s = useRoom.getState();
+    if (!s.playback.mediaId || s.playback.status === "playing" || s.countdownAt) return;
+    const at = serverNow() + 3200;
+    this.applyCountdown(at, true);
+    void this.publish(PEER_TOPICS.countdown, { at });
+  }
+
+  private applyCountdown(at: number, mine: boolean) {
+    clearTimeout(this.countdownTimer);
+    const left = at - serverNow();
+    if (left <= 0 || left > 10_000) return;
+    useRoom.setState({ countdownAt: at });
+    this.countdownTimer = setTimeout(() => {
+      useRoom.setState({ countdownAt: null });
+      const pb = useRoom.getState().playback;
+      // The one who started it presses play; the server keeps both in step.
+      if (mine && pb.mediaId && pb.status !== "playing") void this.sendIntent({ type: "play", positionSec: pb.positionSec });
+    }, left);
+  }
+
+  /** Photo booth: a keepsake photo of the two of you, taken on both screens at once. */
+  snapPhoto() {
+    const now = Date.now();
+    if (now - this.lastSnapAt < 3000) return;
+    this.lastSnapAt = now;
+    useRoom.setState((s) => ({ snapSeq: s.snapSeq + 1 }));
+    void this.publish(PEER_TOPICS.snap, { at: now });
+  }
+
   /** Sleep timer for both: pauses the film (or closes the shared browser) when it runs out. */
   setSleepTimer(minutes: number | null) {
     const endsAt = minutes ? serverNow() + minutes * 60_000 : null;
@@ -535,7 +583,14 @@ export class RoomController {
         const s = useRoom.getState();
         if (s.chat.some((c) => c.id === m.data.id)) return;
         const open = s.panel === "chat";
-        useRoom.setState({ chat: [...s.chat, { ...m.data, from: participant.identity, mine: false }].slice(-200), unread: open ? 0 : s.unread + 1 });
+        clearTimeout(this.typingTimer);
+        useRoom.setState({ chat: [...s.chat, { ...m.data, from: participant.identity, mine: false }].slice(-200), unread: open ? 0 : s.unread + 1, partnerTyping: false });
+        // Chat closed: float the message over the call for a moment.
+        if (!open) {
+          const b = { id: m.data.id, text: m.data.text.slice(0, 160) };
+          useRoom.setState((st) => ({ bubbles: [...st.bubbles, b].slice(-3) }));
+          setTimeout(() => useRoom.setState((st) => ({ bubbles: st.bubbles.filter((x) => x.id !== b.id) })), 6500);
+        }
         break;
       }
       case PEER_TOPICS.chatHistory: {
@@ -563,6 +618,24 @@ export class RoomController {
       case PEER_TOPICS.media: {
         const m = mediaReadySchema.safeParse(data);
         if (m.success) useRoom.setState({ partnerMedia: m.data });
+        break;
+      }
+      case PEER_TOPICS.typing: {
+        if (!typingSchema.safeParse(data).success) return;
+        clearTimeout(this.typingTimer);
+        useRoom.setState({ partnerTyping: true });
+        this.typingTimer = setTimeout(() => useRoom.setState({ partnerTyping: false }), 3500);
+        break;
+      }
+      case PEER_TOPICS.countdown: {
+        const cd = countdownSchema.safeParse(data);
+        if (cd.success) this.applyCountdown(cd.data.at, false);
+        break;
+      }
+      case PEER_TOPICS.snap: {
+        if (!snapSchema.safeParse(data).success) return;
+        this.lastSnapAt = Date.now();
+        useRoom.setState((st) => ({ snapSeq: st.snapSeq + 1 }));
         break;
       }
       case PEER_TOPICS.nudge: {
