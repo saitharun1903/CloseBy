@@ -43,12 +43,12 @@ export default function Landing() {
 
       <main className="relative">
         {/* ───────────── Hero ───────────── */}
-        <section className="mx-auto max-w-[1240px] px-5 pb-10 pt-14 text-center sm:px-8 sm:pt-24">
+        <section className="mx-auto max-w-[1240px] px-5 pb-10 pt-14 text-center sm:px-8 sm:pt-24 [@media(max-height:520px)]:pt-8">
           <p className="mx-auto flex w-fit animate-rise items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-glow-soft/80">
             <span className="h-px w-8 bg-gradient-to-r from-transparent to-glow/60" />A private cinema for two
             <span className="h-px w-8 bg-gradient-to-l from-transparent to-glow/60" />
           </p>
-          <h1 className="mx-auto mt-7 max-w-[1000px] font-serif text-[clamp(54px,10.5vw,138px)] font-normal leading-[0.9] tracking-[-0.025em] text-cream">
+          <h1 className="mx-auto mt-7 max-w-[1000px] font-serif text-[clamp(54px,10.5vw,138px)] font-normal [@media(max-height:520px)]:text-[clamp(40px,7vw,64px)] leading-[0.9] tracking-[-0.025em] text-cream">
             <span className="block animate-rise [animation-delay:80ms]">Movie night,</span>
             <span className="block animate-rise [animation-delay:180ms]">
               <em className="bg-gradient-to-b from-glow-soft to-glow bg-clip-text pr-[0.06em] text-transparent">for two</em> —

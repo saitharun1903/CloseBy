@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeEveryone, createRoom, drift, enterRoom, FILM, FILM_URL, inviteUrl, joinAsGuest, loadFilmForBoth, newPerson, openWatch, pair, videoState } from "./helpers";
+import { closeEveryone, createRoom, drift, enterRoom, FILM, FILM_URL, inviteUrl, joinAsGuest, loadFilmForBoth, newPerson, openWatch, pair, videoState, noAutoLower } from "./helpers";
 
 /** Both players within `tol` of the server trajectory, measured in-page (no cross-page skew). */
 async function bothInSync(a: Page, b: Page, tol: number) {
@@ -108,6 +108,7 @@ test.describe("synchronised playback", () => {
   test("film volume, film mute and partner voice volume are independent of each other and of the mic", async ({ browser }) => {
     const { host, guest } = await pair(browser);
     await loadFilmForBoth(host.page, guest.page);
+    for (const p of [host.page, guest.page]) await noAutoLower(p);
 
     // Guest mutes the film: their mic stays on, host's film is unaffected.
     await guest.page.locator("[data-testid=player]").hover();
