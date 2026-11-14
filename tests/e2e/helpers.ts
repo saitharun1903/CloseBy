@@ -137,3 +137,15 @@ export async function drift(page: Page) {
     return { drift: v.currentTime - expected, rate: v.playbackRate, nominal: pb.rate, buffering: v.readyState < 3 };
   });
 }
+
+/**
+ * The fake test microphone beeps constantly, which counts as talking and
+ * (correctly) lowers the film. Tests that check exact film volumes switch
+ * auto-lower off for the page.
+ */
+export async function noAutoLower(page: Page) {
+  await page.evaluate(() => {
+    const store = (window as unknown as { __cbStore: { getState(): { sound: object }; setState(s: object): void } }).__cbStore;
+    store.setState({ sound: { ...store.getState().sound, autoDuck: false }, talking: false });
+  });
+}

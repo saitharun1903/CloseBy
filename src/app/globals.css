@@ -175,3 +175,38 @@ video::-webkit-media-text-track-container {
 .hb-stage [style*="cursor:none"] {
   cursor: default !important;
 }
+
+/* Phones: anchored popovers that hold a lot (the More menu) become a bottom
+   sheet — easy to reach with a thumb, and nothing runs off the screen. */
+@media (max-width: 639px) {
+  [data-radix-popper-content-wrapper]:has(> .sheet-on-phone) {
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
+    transform: none !important;
+    min-width: 0 !important;
+    z-index: 60 !important;
+  }
+  .sheet-on-phone {
+    width: 100% !important;
+    max-height: min(78dvh, 640px) !important;
+    border-radius: 26px 26px 0 0 !important;
+    border-bottom: 0 !important;
+    padding-bottom: var(--safe-bottom) !important;
+    background: var(--color-ink-850) !important;
+    box-shadow: 0 -24px 60px -12px rgb(0 0 0 / 0.75), 0 0 0 100vmax rgb(0 0 0 / 0.45) !important;
+    animation: sheet-up 280ms var(--ease-out-quart) both !important;
+  }
+  .sheet-on-phone::before {
+    content: "";
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 8px auto 2px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.22);
+  }
+}
+@keyframes sheet-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}

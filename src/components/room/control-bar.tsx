@@ -287,7 +287,7 @@ function MoreButton({ immersive, onToggleImmersive, onQueue }: { immersive: bool
       testId="ctl-more"
       open={open}
       onOpenChange={setOpen}
-      contentClass="w-[340px] max-h-[70dvh] overflow-y-auto p-0 scrollbar-quiet"
+      contentClass="sheet-on-phone w-[340px] max-h-[70dvh] overflow-y-auto p-0 scrollbar-quiet"
       content={
         <div className="divide-y divide-white/[0.07]">
           <section className="space-y-2 p-3 min-[401px]:hidden" aria-label="Reactions">

@@ -27,6 +27,10 @@ test.describe("together extras", () => {
   test("the film dips while someone talks and comes back after (and can be switched off)", async ({ browser }) => {
     const { host, guest } = await pair(browser);
     await loadFilmForBoth(host.page, guest.page);
+    // The fake mics beep constantly (that counts as talking): mute them so this test drives "talking" itself.
+    for (const p of [host.page, guest.page]) await p.getByTestId("ctl-mic").click();
+    await expect(host.page.getByTestId("ctl-mic")).toHaveAccessibleName("Unmute");
+    await host.page.waitForTimeout(1500);
     const store = (p: typeof host.page, talking: boolean) =>
       p.evaluate((t) => (window as unknown as { __cbStore: { setState(s: object): void } }).__cbStore.setState({ talking: t }), talking);
 

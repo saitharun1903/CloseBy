@@ -200,13 +200,15 @@ function Stage({ partner, partnerName, chromeHidden }: { partner?: Participant; 
   const hideSelf = useRoom((s) => s.sound.hideSelf);
   const small = useMediaQuery("(max-width: 767px)");
   const portrait = useMediaQuery("(orientation: portrait)");
+  // Phones and tablets held upright: video on top, faces below (no letterbox bars).
+  const handheld = useMediaQuery("(max-width: 1023px)");
   const local = room.localParticipant;
 
   const sharer = partner?.isScreenShareEnabled ? partner : local.isScreenShareEnabled ? local : null;
   const content: Content = sharer ? "screen" : browserOn ? "browser" : mediaId ? "media" : "faces";
 
   let layout: Effective;
-  if (pref === "auto") layout = small && portrait && content !== "faces" ? "compact" : content === "faces" ? "face" : content === "screen" ? "screen" : "cinema";
+  if (pref === "auto") layout = handheld && portrait && content !== "faces" ? "compact" : content === "faces" ? "face" : content === "screen" ? "screen" : "cinema";
   else layout = pref;
   if (layout === "screen" && !sharer) layout = content === "faces" ? "face" : "cinema";
   if ((layout === "cinema" || layout === "compact") && content === "faces") layout = "face";
@@ -447,7 +449,7 @@ function SidePanel({ desktop }: { desktop: boolean }) {
             onDragEnd={(_, info) => {
               if (info.offset.y > 110 || info.velocity.y > 600) useRoom.setState({ panel: null });
             }}
-            className="fixed inset-x-0 bottom-0 z-50 h-[75dvh] overflow-hidden rounded-t-[28px] border-t hairline bg-ink-850 pb-[var(--safe-bottom)] [@media(max-height:500px)]:h-[92dvh]"
+            className="fixed inset-x-0 bottom-0 z-50 h-[75dvh] overflow-hidden rounded-t-[28px] border-t hairline bg-ink-850 pb-[var(--safe-bottom)] sm:inset-x-auto sm:left-1/2 sm:w-[min(640px,calc(100vw-48px))] sm:-translate-x-1/2 sm:border-x [@media(max-height:500px)]:h-[92dvh]"
             aria-label="Chat and up next"
           >
             {/* Grab here and swipe down to close. */}
