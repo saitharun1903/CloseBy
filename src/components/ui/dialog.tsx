@@ -32,7 +32,7 @@ export function DialogContent({
           className,
         )}
       >
-        <D.Title className="text-[22px] font-semibold leading-tight tracking-[-0.02em] text-paper">{title}</D.Title>
+        <D.Title className="font-serif text-[30px] font-normal leading-[1.05] tracking-[-0.01em] text-paper">{title}</D.Title>
         {description ? <D.Description className="mt-1.5 text-sm text-paper-dim">{description}</D.Description> : <D.Description className="sr-only">{title}</D.Description>}
         <div className="mt-5">{children}</div>
         {!hideClose && (

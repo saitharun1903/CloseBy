@@ -18,7 +18,7 @@ function Thumb({ q, playing }: { q: QueueItemDTO; playing: boolean }) {
       </span>
     );
   return (
-    <span className={cn("grid aspect-video w-24 shrink-0 place-items-center rounded-lg", playing ? "bg-lamp text-white" : "bg-white/[0.07] text-paper-dim")}>
+    <span className={cn("grid aspect-video w-24 shrink-0 place-items-center rounded-lg", playing ? "bg-lamp text-lamp-ink" : "bg-white/[0.07] text-paper-dim")}>
       {q.kind === "file" ? <FolderOpen className="size-5" /> : <Globe className="size-5" />}
     </span>
   );

@@ -132,7 +132,7 @@ export function Html5Player({ item, mode, onExpand }: { item: QueueItemDTO; mode
 
   return (
     <div
-      className={cn("group/player relative h-full w-full overflow-hidden bg-black", mode === "mini" && "rounded-xl", chrome.controlsUp && "controls-up", !chrome.controlsUp && "cursor-none")}
+      className={cn("group/player relative h-full w-full overflow-hidden", mode === "mini" ? "rounded-xl bg-black" : "bg-transparent", chrome.controlsUp && "controls-up", !chrome.controlsUp && "cursor-none")}
       onPointerMove={chrome.poke}
       onPointerDown={chrome.poke}
       data-testid="player"

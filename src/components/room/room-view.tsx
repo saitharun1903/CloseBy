@@ -22,6 +22,7 @@ import { AudioBlockedBanner, ConnectionOverlay, PingLayer, ReactionsLayer, Scree
 import { initRoomStore, useRoom, type LayoutPref } from "./store";
 import { WatchPicker } from "./watch-picker";
 import { useWakeLock } from "./use-wake-lock";
+import { AmbientLight } from "./ambient-light";
 import { YouTubeHub } from "./youtube-hub";
 
 export function RoomView({ initial, media, onLeft }: { initial: RoomStateDTO; media: InitialMedia; onLeft: (seatKept: boolean) => void }) {
@@ -267,10 +268,13 @@ function Stage({ partner, partnerName, chromeHidden }: { partner?: Participant; 
     </>
   );
 
+  const glow = main === "faces" ? null : main;
+
   // Compact: content on top, both faces below (phones in portrait).
   if (layout === "compact" && main !== "faces") {
     return (
       <div className="absolute inset-0 flex flex-col gap-2 px-2 pb-[calc(var(--safe-bottom)+96px)] pt-[calc(var(--safe-top)+64px)]" data-testid="stage" data-layout={layout} data-main={main}>
+        <AmbientLight source={glow} />
         <div className="relative aspect-video max-h-[60%] w-full shrink-0 overflow-hidden rounded-2xl bg-black">{contentNode}</div>
         <div className="grid min-h-[120px] flex-1 grid-cols-2 gap-2">
           {partner ? (
@@ -294,7 +298,8 @@ function Stage({ partner, partnerName, chromeHidden }: { partner?: Participant; 
         data-layout={layout}
         data-main={main}
       >
-        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl bg-black">{contentNode}</div>
+        <AmbientLight source={glow} />
+        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl bg-black shadow-[0_30px_80px_-30px_rgb(0_0_0/0.9)]">{contentNode}</div>
         <aside className={cn("relative flex shrink-0 gap-3", railBelow ? "h-[120px] flex-row" : "w-[clamp(200px,22vw,300px)] flex-col justify-center")} aria-label="Cameras">
           {partner ? (
             <div className={cn("overflow-hidden rounded-2xl", railBelow ? "h-full flex-1" : "aspect-[4/3] w-full")}>
@@ -317,6 +322,7 @@ function Stage({ partner, partnerName, chromeHidden }: { partner?: Participant; 
 
   return (
     <div className="absolute inset-0" data-testid="stage" data-layout={layout} data-main={main}>
+      <AmbientLight source={glow} />
       <div className="absolute inset-0" onDoubleClick={main === "screen" || (main === "media" && !isYouTube) ? onDouble : undefined}>
         {contentNode}
         {main !== "faces" && <PingLayer />}

@@ -74,7 +74,7 @@ export const CtlButtonBase = forwardRef<HTMLButtonElement, CtlProps>(function Ct
     >
       {children}
       {badge ? (
-        <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-lamp px-1 text-[10px] font-bold leading-[18px] text-white ring-2 ring-black/40" aria-label={typeof badge === "number" ? `${badge} unread` : "New"}>
+        <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-lamp px-1 text-[10px] font-bold leading-[18px] text-lamp-ink ring-2 ring-black/40" aria-label={typeof badge === "number" ? `${badge} unread` : "New"}>
           {typeof badge === "number" ? (badge > 9 ? "9+" : badge) : ""}
         </span>
       ) : null}
@@ -357,6 +357,13 @@ function MoreButton({ immersive, onToggleImmersive, onQueue }: { immersive: bool
                 </button>
               </PopoverClose>
             )}
+            <label className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-[14px] hover:bg-white/10">
+              <span className="flex-1">
+                Ambient light
+                <span className="block text-[12px] text-paper-faint">The room glows with the colours on screen</span>
+              </span>
+              <Switch checked={sound.ambient !== false} onCheckedChange={(v) => setSound({ ambient: v })} aria-label="Ambient light" data-testid="ambient-toggle" />
+            </label>
             <label className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 text-[14px] hover:bg-white/10">
               <span className="flex-1">Show my camera</span>
               <Switch checked={!sound.hideSelf} onCheckedChange={(v) => setSound({ hideSelf: !v })} aria-label="Show my camera" />

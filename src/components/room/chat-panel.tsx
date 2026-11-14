@@ -78,7 +78,7 @@ export function ChatPanel() {
               <div
                 className={cn(
                   "max-w-[85%] whitespace-pre-wrap break-words rounded-[18px] px-3.5 py-2 text-[14px] leading-snug",
-                  m.mine ? "rounded-br-[6px] bg-lamp text-white" : "rounded-bl-[6px] bg-white/[0.09] text-paper",
+                  m.mine ? "rounded-br-[6px] bg-lamp text-lamp-ink" : "rounded-bl-[6px] bg-white/[0.09] text-paper",
                 )}
               >
                 {links.map((p, j) =>
@@ -132,7 +132,7 @@ export function ChatPanel() {
             className="max-h-32 min-h-[34px] flex-1 resize-none bg-transparent py-1.5 text-[14px] text-paper outline-none placeholder:text-paper-ghost [field-sizing:content]"
             data-testid="chat-input"
           />
-          <button type="submit" disabled={!text.trim()} aria-label="Send" className="grid size-8 shrink-0 place-items-center rounded-full bg-lamp text-white transition-opacity disabled:opacity-30">
+          <button type="submit" disabled={!text.trim()} aria-label="Send" className="grid size-8 shrink-0 place-items-center rounded-full bg-lamp text-lamp-ink transition-opacity disabled:opacity-30">
             <ArrowUp className="size-4" />
           </button>
         </div>
