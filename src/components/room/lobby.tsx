@@ -180,7 +180,7 @@ export function Lobby({ state, onJoin }: { state: RoomStateDTO; onJoin: (m: Init
       {/* Bottom card */}
       <div className="absolute inset-x-0 bottom-0 flex justify-center px-4 pb-[calc(var(--safe-bottom)+20px)]">
         <div className="glass w-full max-w-[520px] animate-fade-in rounded-[28px] p-6 sm:p-7">
-          <h1 className="text-center text-[24px] font-semibold tracking-[-0.025em] text-white sm:text-[28px]">{heading}</h1>
+          <h1 className="text-center font-serif text-[32px] font-normal leading-none tracking-[-0.01em] text-paper sm:text-[38px]">{heading}</h1>
           <p className="mt-1 text-center text-[14px] text-white/65">Nobody sees or hears you until you join.</p>
 
           <div className="mt-5 flex items-center justify-center gap-3">

@@ -79,6 +79,7 @@ Legend: **✅ Auto** — implemented and covered by automated tests that were ru
 | Pop out partner's camera (Picture-in-Picture) | ✅ Impl · 🧪 Manual per browser |
 | Screen stays awake in the room (Wake Lock) | ✅ Impl · 🧪 Manual (phones/tablets) |
 | Install as an app (manifest, icons, standalone, iOS home-screen) | ✅ Auto (manifest + icons served) |
+| Ambient light: the room glows with the colours on screen (files, links, shared browser, screen share; YouTube uses its thumbnail); switchable | ✅ Auto (shown + switch) |
 | Shared browser: smooth-playback mode, nearest region, keep-alive through long films | ✅ Impl · 🧪 Manual (needs Hyperbeam) |
 
 ## Security & ops

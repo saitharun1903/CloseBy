@@ -24,7 +24,7 @@ test.describe("together extras", () => {
     for (const p of [host.page, guest.page]) await expect(p.getByTestId("sleep-chip")).toHaveCount(0);
   });
 
-  test("the film dips while someone talks and comes back after (and can be switched off)", async ({ browser }) => {
+  test("the film dips while someone talks, the room glows with the film, and both can be switched off", async ({ browser }) => {
     const { host, guest } = await pair(browser);
     await loadFilmForBoth(host.page, guest.page);
     // The fake mics beep constantly (that counts as talking): mute them so this test drives "talking" itself.
@@ -41,9 +41,15 @@ test.describe("together extras", () => {
     await store(host.page, false);
     await expect.poll(async () => (await videoState(host.page)).volume).toBeCloseTo(0.8, 1);
 
+    // Ambient light glows around the film while it's on screen…
+    await expect(host.page.getByTestId("ambient-light")).toBeVisible();
+
     // Switched off: talking leaves the film alone.
     await host.page.getByTestId("ctl-more").click();
     await host.page.getByTestId("auto-duck").click();
+    // …and its switch turns it off.
+    await host.page.getByTestId("ambient-toggle").click();
+    await expect(host.page.getByTestId("ambient-light")).toHaveCount(0);
     await host.page.keyboard.press("Escape");
     await store(host.page, true);
     await host.page.waitForTimeout(600);

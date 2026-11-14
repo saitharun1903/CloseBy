@@ -117,7 +117,7 @@ export function WaitingCard({ partnerName }: { partnerName?: string }) {
         <span className="size-11 rounded-full border-2 border-white/90" />
         <span className="-ml-3.5 size-11 animate-breathe rounded-full border-2 border-dashed border-white/50" />
       </div>
-      <h2 className="text-[22px] sm:text-[24px] font-semibold tracking-[-0.025em] text-white">{partnerName ? `Waiting for ${partnerName}` : "Invite someone"}</h2>
+      <h2 className="font-serif text-[30px] font-normal leading-none tracking-[-0.01em] text-paper sm:text-[34px]">{partnerName ? `Waiting for ${partnerName}` : "Invite someone"}</h2>
       {isHost && inviteUrl && !partnerName ? (
         <>
           <p className="mx-auto mt-1.5 max-w-[340px] text-[14px] leading-relaxed text-white/65">Send this link to the one person you’d like to join. The room fits just the two of you.</p>
@@ -153,8 +153,8 @@ export function ScreenStage({ sharer, isLocal, sharerName }: { sharer: Participa
   const myShareAudio = useRoom((s) => s.myShareAudio);
   const hasAudio = isLocal ? myShareAudio === "with-audio" : !!sharer.getTrackPublication(Track.Source.ScreenShareAudio);
   return (
-    <div className="relative h-full w-full overflow-hidden bg-black" data-testid="screen-stage">
-      {track ? <TrackVideo track={track} fit="contain" className="bg-black" testId={isLocal ? "screen-local" : "screen-remote"} /> : <div className="grid h-full place-items-center text-sm text-white/60">Starting screen share…</div>}
+    <div className="relative h-full w-full overflow-hidden" data-testid="screen-stage">
+      {track ? <TrackVideo track={track} fit="contain" className="bg-transparent" testId={isLocal ? "screen-local" : "screen-remote"} /> : <div className="grid h-full place-items-center text-sm text-white/60">Starting screen share…</div>}
       <div className="absolute left-1/2 top-16 flex -translate-x-1/2 flex-wrap items-center justify-center gap-2">
         <span className="glass flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] font-medium text-white" role="status">
           <span className="size-2 rounded-full bg-danger" aria-hidden />
@@ -252,7 +252,7 @@ export function ConnectionOverlay() {
     <div className="absolute inset-0 z-40 grid place-items-center bg-black/70 p-6 backdrop-blur-md" role="alertdialog" aria-label={end.title}>
       <div className="glass max-w-[400px] rounded-[28px] p-7 text-center">
         <WifiOff className="mx-auto size-7 text-white/70" />
-        <h2 className="mt-3 text-[22px] font-semibold tracking-[-0.02em]">{end.title}</h2>
+        <h2 className="mt-3 font-serif text-[30px] font-normal leading-none tracking-[-0.01em]">{end.title}</h2>
         <p className="mt-1.5 text-[14px] text-white/65">{end.body}</p>
         {end.canRejoin && (
           <Button variant="primary" className="mt-5" onClick={() => void c.rejoin()}>

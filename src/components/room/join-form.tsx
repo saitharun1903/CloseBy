@@ -66,7 +66,7 @@ export function JoinForm({ roomId, invite, onJoined }: { roomId: string; invite:
         <p className="inline-flex items-center gap-2 rounded-full bg-white/[0.07] px-3 py-1 text-[13px] font-medium text-paper-dim">
           <span className="size-1.5 rounded-full bg-ok" /> You’re invited
         </p>
-        <h1 className="mt-5 text-[36px] font-semibold leading-[1.05] tracking-[-0.035em]">{preview.hostName ? `${preview.hostName} invited you` : "Join the room"}</h1>
+        <h1 className="mt-5 font-serif text-[44px] font-normal leading-[0.98] tracking-[-0.015em]">{preview.hostName ? `${preview.hostName} invited you` : "Join the room"}</h1>
         <p className="mt-3 text-paper-dim">
           A private room for two. You’ll check your camera and microphone before anyone sees or hears you.
         </p>

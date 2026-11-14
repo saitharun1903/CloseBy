@@ -39,7 +39,7 @@ export function WatchPicker() {
         >
           <div className="flex items-start justify-between px-6 pt-6">
             <div>
-              <D.Title className="text-[22px] font-semibold tracking-[-0.02em]">Watch together</D.Title>
+              <D.Title className="font-serif text-[32px] font-normal leading-none tracking-[-0.01em]">Watch together</D.Title>
               <D.Description className="mt-0.5 text-[14px] text-paper-dim">Everything you pick plays in sync for both of you.</D.Description>
             </div>
             <D.Close className="grid size-9 place-items-center rounded-full bg-white/10 text-paper-dim hover:bg-white/15 hover:text-paper" aria-label="Close">

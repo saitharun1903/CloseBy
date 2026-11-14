@@ -178,7 +178,7 @@ export function YouTubeBrowse({ layout, onDone }: { layout: "full" | "embedded";
             }}
             placeholder={enabled ? "Search YouTube or paste a link" : "Paste a YouTube link"}
             aria-label={enabled ? "Search YouTube or paste a link" : "YouTube link"}
-            className="h-11 w-full rounded-full bg-white/[0.08] pl-11 pr-24 text-[15px] outline-none placeholder:text-paper-faint focus:bg-white/[0.11] focus:shadow-[0_0_0_4px_rgb(10_132_255/0.2)]"
+            className="h-11 w-full rounded-full bg-white/[0.08] pl-11 pr-24 text-[15px] outline-none placeholder:text-paper-faint focus:bg-white/[0.11] focus:shadow-[0_0_0_4px_rgb(255_179_107/0.2)]"
             data-testid="yt-input"
           />
           <Button type="submit" size="sm" variant="primary" className="absolute right-1 top-1/2 h-9 -translate-y-1/2" disabled={!q.trim() || !!busy}>
@@ -218,7 +218,7 @@ export function YouTubeBrowse({ layout, onDone }: { layout: "full" | "embedded";
           {browserOn && (
             <button
               onClick={() => void openRealYouTube()}
-              className="ml-auto flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-lamp/15 px-3.5 text-[13px] font-semibold text-[#7cc4ff] hover:bg-lamp/25"
+              className="ml-auto flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-lamp/15 px-3.5 text-[13px] font-semibold text-lamp-bright hover:bg-lamp/25"
               data-testid="yt-real"
             >
               {busy === "browser" ? <Loader className="size-4 animate-spin" /> : <Globe className="size-4" />} Open real YouTube together

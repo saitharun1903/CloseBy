@@ -39,6 +39,8 @@ export interface SoundPrefs {
   smoothBrowser?: boolean;
   /** Lower the film while either of you is talking (on unless switched off). */
   autoDuck?: boolean;
+  /** Room glows with the colours of what's playing (on unless switched off). */
+  ambient?: boolean;
 }
 export const loadSoundPrefs = (): SoundPrefs => read("sound", { mediaVolume: 0.8, voiceVolume: 1, mirrorSelf: true, hideSelf: false });
 export const saveSoundPrefs = (p: SoundPrefs) => write("sound", p);
