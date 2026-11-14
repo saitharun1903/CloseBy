@@ -1,5 +1,6 @@
 "use client";
-import { Gauge, ListVideo, Pause, Play, Volume1, Volume2, VolumeX } from "lucide-react";
+import { Gauge, ListVideo, Pause, Play, Timer, Volume1, Volume2, VolumeX } from "lucide-react";
+import { useController } from "../context";
 import type { Chapter } from "@/lib/youtube";
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
@@ -97,6 +98,7 @@ export function PlayerControls({
             {playing ? <Pause className="size-5 fill-current" /> : <Play className="size-5 fill-current" />}
           </button>
         </Tooltip>
+        {!playing && !disabled && <CountdownButton />}
         <span className="shrink-0 font-mono text-[12px] text-white/90 tabular" data-testid="player-time">
           {formatTime(shown)} <span className="text-white/45">/ {formatTime(duration)}</span>
         </span>
@@ -233,5 +235,24 @@ function ChapterMenu({ chapters, current, onSeek }: { chapters: Chapter[]; curre
         ))}
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** "3-2-1": start together with a countdown on both screens. */
+function CountdownButton() {
+  const c = useController();
+  const running = useRoom((s) => !!s.countdownAt);
+  return (
+    <Tooltip label="Play for both with a 3-2-1 countdown">
+      <button
+        onClick={() => c.startCountdown()}
+        disabled={running}
+        aria-label="Play for both with a 3-2-1 countdown"
+        className="hidden h-9 items-center gap-1.5 rounded-full bg-white/10 px-3 text-[12px] font-semibold hover:bg-white/15 disabled:opacity-40 min-[420px]:flex"
+        data-testid="countdown-button"
+      >
+        <Timer className="size-4" /> 3·2·1
+      </button>
+    </Tooltip>
   );
 }

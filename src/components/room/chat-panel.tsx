@@ -32,6 +32,7 @@ export function ChatPanel() {
   const c = useController();
   const chat = useRoom((s) => s.chat);
   const partnerName = useRoom((s) => s.participants.find((p) => p.id !== s.me.id)?.displayName);
+  const typing = useRoom((s) => s.partnerTyping);
   const [text, setText] = useState("");
   const list = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -107,6 +108,18 @@ export function ChatPanel() {
           );
         })}
       </div>
+      <div className="h-6 shrink-0 px-4" aria-live="polite">
+        {typing && (
+          <span className="flex items-center gap-2 text-[12px] text-paper-faint" data-testid="typing">
+            <span className="flex gap-0.5" aria-hidden>
+              {[0, 1, 2].map((i) => (
+                <span key={i} className="size-1.5 animate-bounce rounded-full bg-paper-faint" style={{ animationDelay: `${i * 120}ms` }} />
+              ))}
+            </span>
+            {partnerName ?? "Your partner"} is typing…
+          </span>
+        )}
+      </div>
       <form
         className="border-t hairline p-3"
         onSubmit={(e) => {
@@ -120,7 +133,10 @@ export function ChatPanel() {
             rows={1}
             value={text}
             maxLength={1000}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              if (e.target.value) c.sendTyping();
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();

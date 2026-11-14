@@ -64,4 +64,52 @@ test.describe("together extras", () => {
     expect(m.icons.map((i: { sizes: string }) => i.sizes)).toEqual(expect.arrayContaining(["192x192", "512x512"]));
     for (const i of m.icons) expect((await request.get(i.src)).ok()).toBe(true);
   });
+
+  test("chat: typing shows for the partner, and messages float over the call while chat is closed", async ({ browser }) => {
+    const { host, guest } = await pair(browser);
+    await host.page.getByTestId("ctl-chat").click();
+    await guest.page.getByTestId("ctl-chat").click();
+    await guest.page.getByTestId("chat-input").pressSequentially("hel");
+    await expect(host.page.getByTestId("typing")).toContainText("Sam is typing");
+    await guest.page.getByTestId("chat-input").press("Enter");
+    await expect(host.page.getByTestId("typing")).toHaveCount(0);
+
+    // Host closes chat; the next message floats up over the call and opens chat when tapped.
+    await host.page.getByRole("button", { name: "Close panel" }).click();
+    await guest.page.getByTestId("chat-input").fill("look at this scene!");
+    await guest.page.getByTestId("chat-input").press("Enter");
+    await expect(host.page.getByTestId("chat-bubble")).toContainText("look at this scene!");
+    await host.page.getByTestId("chat-bubble").click();
+    await expect(host.page.getByTestId("chat-list")).toContainText("look at this scene!");
+  });
+
+  test("3-2-1 countdown shows on both screens, then playback starts for both", async ({ browser }) => {
+    const { host, guest } = await pair(browser);
+    await loadFilmForBoth(host.page, guest.page);
+    await host.page.locator("[data-testid=player]").hover();
+    await host.page.getByTestId("countdown-button").click();
+    for (const p of [host.page, guest.page]) await expect(p.getByTestId("countdown")).toBeVisible();
+    // Still paused during the countdown…
+    expect((await videoState(guest.page)).paused).toBe(true);
+    // …then both play.
+    for (const p of [host.page, guest.page]) await expect.poll(async () => (await videoState(p)).paused, { timeout: 8000 }).toBe(false);
+    for (const p of [host.page, guest.page]) await expect(p.getByTestId("countdown")).toHaveCount(0);
+  });
+
+  test("photo booth: one snap gives both people the keepsake photo", async ({ browser }) => {
+    const { host, guest } = await pair(browser);
+    await host.page.getByTestId("ctl-react").click();
+    await host.page.getByTestId("snap").click();
+    for (const p of [host.page, guest.page]) {
+      await expect(p.getByTestId("snap-preview")).toBeVisible();
+      await expect.poll(() => p.getByTestId("snap-image").evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(1600);
+      await expect(p.getByTestId("snap-save")).toHaveAttribute("download", /closeby-movie-night-\d{4}-\d{2}-\d{2}\.png/);
+    }
+  });
+
+  test("? shows the keyboard shortcuts", async ({ browser }) => {
+    const { host } = await pair(browser);
+    await host.page.locator("body").press("?");
+    await expect(host.page.getByTestId("shortcuts")).toContainText("Play / pause for both");
+  });
 });

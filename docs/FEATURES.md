@@ -83,6 +83,10 @@ Legend: **✅ Auto** — implemented and covered by automated tests that were ru
 | Pop out partner's camera (Picture-in-Picture) | ✅ Impl · 🧪 Manual per browser |
 | Screen stays awake in the room (Wake Lock) | ✅ Impl · 🧪 Manual (phones/tablets) |
 | Install as an app (manifest, icons, standalone, iOS home-screen) | ✅ Auto (manifest + icons served) |
+| Photo booth: one snap → both get a keepsake card (both faces, film title, date) to save/share; made on-device | ✅ Auto (both receive a 1600px image) |
+| "3-2-1" countdown start, shown on both screens, then plays for both | ✅ Auto |
+| Chat: partner typing indicator; messages float over the call while chat is closed | ✅ Auto |
+| Keyboard shortcuts guide (?) | ✅ Auto |
 | Ambient light: the room glows with the colours on screen (files, links, shared browser, screen share; YouTube uses its thumbnail); switchable | ✅ Auto (shown + switch) |
 | Shared browser: smooth-playback mode, nearest region, keep-alive through long films | ✅ Impl · 🧪 Manual (needs Hyperbeam) |
 

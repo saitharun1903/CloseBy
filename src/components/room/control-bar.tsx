@@ -2,6 +2,8 @@
 import { Room, Track } from "livekit-client";
 import {
   Loader,
+  Camera,
+  Keyboard,
   Moon,
   Columns2,
   Ellipsis,
@@ -222,6 +224,25 @@ function NudgeButton({ wide }: { wide?: boolean }) {
   );
 }
 
+/** Photo booth: a keepsake photo of the two of you, on both screens. */
+function SnapButton() {
+  const c = useController();
+  const hasPartner = useLk().remoteParticipants.size > 0;
+  return (
+    <Tooltip label="Snap a photo of us">
+      <button
+        onClick={() => c.snapPhoto()}
+        disabled={!hasPartner}
+        aria-label="Snap a photo of the two of you"
+        className="grid size-11 shrink-0 place-items-center rounded-full bg-white/[0.12] text-white transition-transform hover:bg-white/[0.2] active:scale-95 disabled:opacity-40"
+        data-testid="snap"
+      >
+        <Camera className="size-5" />
+      </button>
+    </Tooltip>
+  );
+}
+
 function ReactionsButton() {
   const c = useController();
   return (
@@ -238,6 +259,7 @@ function ReactionsButton() {
             </button>
           ))}
           <NudgeButton />
+          <SnapButton />
         </>
       }
     >
@@ -298,7 +320,12 @@ function MoreButton({ immersive, onToggleImmersive, onQueue }: { immersive: bool
                 </button>
               ))}
             </div>
-            <NudgeButton wide />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <NudgeButton wide />
+              </div>
+              <SnapButton />
+            </div>
           </section>
           <section className="p-4">
             <h3 className="text-[11px] font-semibold uppercase tracking-wider text-paper-faint">Volume · only what you hear</h3>
@@ -335,6 +362,12 @@ function MoreButton({ immersive, onToggleImmersive, onQueue }: { immersive: bool
                 {immersive ? <Minimize className="size-5 text-paper-dim" /> : <Maximize className="size-5 text-paper-dim" />}
                 {immersive ? "Exit full screen" : "Full screen"}
                 <kbd className="ml-auto font-mono text-[11px] text-paper-faint">F</kbd>
+              </button>
+            </PopoverClose>
+            <PopoverClose asChild>
+              <button onClick={() => useRoom.setState({ shortcutsOpen: true })} className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left text-[14px] hover:bg-white/10 max-sm:hidden" data-testid="ctl-shortcuts">
+                <Keyboard className="size-5 text-paper-dim" /> Keyboard shortcuts
+                <kbd className="ml-auto font-mono text-[11px] text-paper-faint">?</kbd>
               </button>
             </PopoverClose>
             <PopoverClose asChild>

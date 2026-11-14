@@ -61,6 +61,15 @@ export interface RoomStore {
   talking: boolean;
   /** Shared sleep timer (server-time deadline) and who set it. */
   sleepTimer: { endsAt: number; minutes: number; byMe: boolean } | null;
+  /** Partner is typing in chat. */
+  partnerTyping: boolean;
+  /** Recent incoming messages shown over the stage while chat is closed. */
+  bubbles: { id: string; text: string }[];
+  /** "3-2-1" countdown deadline (server time), if one is running. */
+  countdownAt: number | null;
+  /** Bumps when a keepsake photo should be taken. */
+  snapSeq: number;
+  shortcutsOpen: boolean;
   sync: SyncState;
   layoutPref: LayoutPref;
   sound: SoundPrefs;
@@ -103,6 +112,11 @@ export function initRoomStore(s: RoomStateDTO) {
       partnerMedia: null,
       talking: false,
       sleepTimer: null,
+      partnerTyping: false,
+      bubbles: [],
+      countdownAt: null,
+      snapSeq: 0,
+      shortcutsOpen: false,
       sync: "idle",
       layoutPref: "auto",
       sound: loadSoundPrefs(),

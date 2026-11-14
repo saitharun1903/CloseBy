@@ -23,6 +23,8 @@ import { initRoomStore, useRoom, type LayoutPref } from "./store";
 import { WatchPicker } from "./watch-picker";
 import { useWakeLock } from "./use-wake-lock";
 import { AmbientLight } from "./ambient-light";
+import { ChatBubbles, CountdownOverlay, ShortcutsHelp } from "./overlays";
+import { PhotoBooth } from "./photo-booth";
 import { YouTubeHub } from "./youtube-hub";
 
 export function RoomView({ initial, media, onLeft }: { initial: RoomStateDTO; media: InitialMedia; onLeft: (seatKept: boolean) => void }) {
@@ -66,6 +68,8 @@ function RoomShell({ onLeft }: { onLeft: (seatKept: boolean) => void }) {
   const partnerDTO = useRoom((s) => s.participants.find((p) => p.id !== s.me.id));
   const playing = useRoom((s) => s.playback.status === "playing" && !!s.playback.mediaId);
   const browserOn = useRoom((s) => s.browser.active);
+  const hasMedia = useRoom((s) => !!s.playback.mediaId);
+  const youTubeOnStage = useRoom((s) => s.queue.find((q) => q.id === s.playback.mediaId)?.kind === "youtube");
   const desktop = useMediaQuery("(min-width: 1024px)", true);
   const rootRef = useRef<HTMLDivElement>(null);
   // Don't let the screen sleep while you're together.
@@ -144,6 +148,8 @@ function RoomShell({ onLeft }: { onLeft: (seatKept: boolean) => void }) {
       <PartnerAudio />
       <div className="absolute inset-0 transition-[right] duration-300 ease-[cubic-bezier(.25,1,.5,1)]" style={{ right: panelInset }}>
         <Stage partner={partner} partnerName={partnerDTO?.displayName} chromeHidden={chromeHidden} />
+        <CountdownOverlay overPlayer={youTubeOnStage} />
+        <ChatBubbles bottom={BOTTOM_BAND + (hasMedia ? 96 : 16)} />
         <AudioBlockedBanner />
         <ConnectionOverlay />
       </div>
@@ -165,6 +171,8 @@ function RoomShell({ onLeft }: { onLeft: (seatKept: boolean) => void }) {
       <SidePanel desktop={desktop} />
       <WatchPicker />
       <YouTubeHub />
+      <PhotoBooth />
+      <ShortcutsHelp />
       <LeaveDialog
         open={leaveOpen}
         onOpenChange={setLeaveOpen}
