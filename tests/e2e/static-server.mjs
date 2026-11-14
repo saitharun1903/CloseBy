@@ -12,13 +12,20 @@ createServer((req, res) => {
     const q = u.searchParams.get("q");
     const video = (id, title) => ({
       id,
-      snippet: { title, channelTitle: "Test Channel", publishedAt: "2026-11-01T00:00:00Z" },
+      snippet: {
+        title,
+        channelTitle: "Test Channel",
+        publishedAt: "2026-11-01T00:00:00Z",
+        description: id === "chap0000001" ? "A video with chapters\n\n0:00 Intro\n0:40 Middle part\n1:20 Finale" : "No chapters here",
+      },
       contentDetails: { duration: "PT2M" },
       statistics: { viewCount: "123456" },
       status: { embeddable: true },
     });
     res.writeHead(200, { "content-type": "application/json" });
     if (u.pathname === "/yt/search") return res.end(JSON.stringify({ items: [{ id: { videoId: "srchsrch001" } }] }));
+    if (u.pathname === "/yt/playlistItems") return res.end(JSON.stringify({ items: ["plist000001", "plist000002", "plist000003"].map((videoId) => ({ contentDetails: { videoId } })) }));
+    if (u.pathname === "/yt/playlists") return res.end(JSON.stringify({ items: [{ snippet: { title: "Road trip mix" } }] }));
     if (u.searchParams.get("id")) return res.end(JSON.stringify({ items: u.searchParams.get("id").split(",").map((id) => video(id, `Result for ${q ?? "search"}`)) }));
     return res.end(JSON.stringify({ items: [video("trend000001", `Top video (${cat})`), video("trend000002", `Second video (${cat})`)] }));
   }

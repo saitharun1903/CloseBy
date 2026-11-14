@@ -39,3 +39,49 @@ export function parseYouTubeStart(input: string): number {
 }
 
 export const youtubeThumb = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+
+/**
+ * Playlist id from a pasted link (…/playlist?list=PL…, or a watch link with &list=).
+ * Auto-generated mixes (RD…) can't be listed by YouTube's API, so they're ignored.
+ */
+export function parseYouTubePlaylistId(input: string): string | null {
+  let u: URL;
+  try {
+    const s = input.trim();
+    u = new URL(/^https?:\/\//i.test(s) ? s : `https://${s}`);
+  } catch {
+    return null;
+  }
+  const host = u.hostname.replace(/^(www|m|music)\./, "");
+  if (host !== "youtube.com" && host !== "youtu.be") return null;
+  const list = u.searchParams.get("list");
+  if (!list || !/^[A-Za-z0-9_-]{10,64}$/.test(list) || /^RD/.test(list)) return null;
+  return list;
+}
+
+export interface Chapter {
+  start: number;
+  title: string;
+}
+
+/**
+ * Chapters from a video description, using YouTube's own rules: timestamps at
+ * the start of lines, starting at 0:00, ascending, at least three of them.
+ */
+export function parseChapters(description: string | null | undefined, durationSec?: number | null): Chapter[] {
+  if (!description) return [];
+  const out: Chapter[] = [];
+  for (const raw of description.split(/\r?\n/)) {
+    const m = raw.trim().match(/^[([]?((?:\d{1,2}:)?\d{1,2}:\d{2})[)\]]?\s*(?:[-–—:|•.]\s*)?(.+)$/);
+    if (!m) continue;
+    const parts = m[1]!.split(":").map(Number);
+    const start = parts.reduce((acc, n) => acc * 60 + n, 0);
+    const title = m[2]!.trim().replace(/\s+/g, " ").slice(0, 80);
+    if (!title) continue;
+    if (durationSec && start >= durationSec) continue;
+    if (out.length && start <= out[out.length - 1]!.start) continue;
+    out.push({ start, title });
+  }
+  if (out.length < 3 || out[0]!.start !== 0) return [];
+  return out.slice(0, 100);
+}

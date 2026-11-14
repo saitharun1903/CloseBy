@@ -44,3 +44,25 @@ export interface SoundPrefs {
 }
 export const loadSoundPrefs = (): SoundPrefs => read("sound", { mediaVolume: 0.8, voiceVolume: 1, mirrorSelf: true, hideSelf: false });
 export const saveSoundPrefs = (p: SoundPrefs) => write("sound", p);
+
+/** YouTube videos played on this device, newest first ("Watch again"). */
+export interface YouTubeHistoryItem {
+  id: string;
+  title: string;
+  channel: string | null;
+  thumbnailUrl: string;
+  durationSec?: number | null;
+}
+const HISTORY_MAX = 20;
+export const loadYouTubeHistory = (): YouTubeHistoryItem[] => {
+  const h = read<YouTubeHistoryItem[]>("ytHistory", []);
+  return Array.isArray(h) ? h.filter((x) => x && typeof x.id === "string" && typeof x.title === "string").slice(0, HISTORY_MAX) : [];
+};
+export function rememberYouTube(item: YouTubeHistoryItem) {
+  write("ytHistory", [item, ...loadYouTubeHistory().filter((x) => x.id !== item.id)].slice(0, HISTORY_MAX));
+}
+export const clearYouTubeHistory = () => write("ytHistory", []);
+
+/** YouTube captions on/off for this device. */
+export const loadYouTubeCaptions = () => read("ytCaptions", false);
+export const saveYouTubeCaptions = (on: boolean) => write("ytCaptions", on);

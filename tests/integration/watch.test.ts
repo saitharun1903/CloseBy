@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { AppError } from "@/server/errors";
 import type { BrowserProvider } from "@/server/hyperbeam";
-import { addQueueItem, createRoom, endRoom, getBrowser, getRoomState, joinRoom, searchYouTube, startBrowser, youtubeTrending, stopBrowser, submitPlaybackIntent } from "@/server/rooms";
+import { addQueueItem, addYouTubePlaylist, youtubeChapters, createRoom, endRoom, getBrowser, getRoomState, joinRoom, searchYouTube, startBrowser, youtubeTrending, stopBrowser, submitPlaybackIntent } from "@/server/rooms";
 import type { YouTubeService } from "@/server/youtube";
 import { makeDb, makeDeps, truncate } from "./helpers";
 
@@ -28,6 +28,15 @@ const fakeYouTube: YouTubeService = {
   },
   search: async (q) => [{ id: "dQw4w9WgXcQ", title: `Result for ${q}`, channel: null, thumbnailUrl: "t" }],
   trending: async (c) => [{ id: "dQw4w9WgXcQ", title: `Top in ${c}`, channel: null, thumbnailUrl: "t" }],
+  playlist: async (listId) => ({
+    title: `List ${listId}`,
+    videos: ["aaaaaaaaaa1", "aaaaaaaaaa2", "aaaaaaaaaa3"].map((id) => ({ id, title: `Video ${id}`, channel: "Chan", thumbnailUrl: "t", durationSec: 60 })),
+  }),
+  chapters: async () => [
+    { start: 0, title: "Intro" },
+    { start: 30, title: "Middle" },
+    { start: 50, title: "End" },
+  ],
 };
 
 async function setup() {
@@ -59,6 +68,29 @@ describe("YouTube in the watchlist", () => {
     const { d, r } = await setup();
     expect((await youtubeTrending(d, r.claims, r.roomId, "music")).results[0]!.title).toBe("Top in music");
     await expect(youtubeTrending(d, null, r.roomId, "music")).rejects.toThrow();
+  });
+  it("adds a whole playlist to Up next in order, with durations", async () => {
+    const { d, r } = await setup();
+    await addQueueItem(d, r.claims, r.roomId, { kind: "youtube", url: "https://youtu.be/dQw4w9WgXcQ" });
+    const res = await addYouTubePlaylist(d, r.claims, r.roomId, "https://www.youtube.com/playlist?list=PLabcdefghij");
+    expect(res.playlistTitle).toBe("List PLabcdefghij");
+    expect(res.added.map((i) => i.externalId)).toEqual(["aaaaaaaaaa1", "aaaaaaaaaa2", "aaaaaaaaaa3"]);
+    expect(res.added[0]!.durationSec).toBe(60);
+    // Appended after what was already queued, in playlist order.
+    expect(res.items.map((i) => i.externalId)).toEqual(["dQw4w9WgXcQ", "aaaaaaaaaa1", "aaaaaaaaaa2", "aaaaaaaaaa3"]);
+  });
+  it("refuses non-playlist links, strangers, and works only with search switched on", async () => {
+    const { d, r } = await setup();
+    await expect(addYouTubePlaylist(d, r.claims, r.roomId, "https://youtu.be/dQw4w9WgXcQ")).rejects.toThrow(/playlist link/);
+    await expect(addYouTubePlaylist(d, null, r.roomId, "https://www.youtube.com/playlist?list=PLabcdefghij")).rejects.toThrow();
+    await expect(addYouTubePlaylist({ ...d, youtube: { ...fakeYouTube, playlist: null } }, r.claims, r.roomId, "https://www.youtube.com/playlist?list=PLabcdefghij")).rejects.toThrow(/switched on/);
+  });
+  it("serves chapters to members, and never fails playback over them", async () => {
+    const { d, r } = await setup();
+    expect((await youtubeChapters(d, r.claims, r.roomId, "dQw4w9WgXcQ")).chapters.map((c) => c.title)).toEqual(["Intro", "Middle", "End"]);
+    await expect(youtubeChapters(d, null, r.roomId, "dQw4w9WgXcQ")).rejects.toThrow();
+    const broken = { ...fakeYouTube, chapters: async () => Promise.reject(new Error("quota")) };
+    expect((await youtubeChapters({ ...d, youtube: broken }, r.claims, r.roomId, "dQw4w9WgXcQ")).chapters).toEqual([]);
   });
 });
 

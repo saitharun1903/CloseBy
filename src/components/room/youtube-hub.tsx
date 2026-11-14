@@ -1,6 +1,6 @@
 "use client";
 import * as D from "@radix-ui/react-dialog";
-import { Clapperboard, Cpu, Flame, Gamepad2, Globe, ListPlus, Loader, Music, Newspaper, Play, Search, Smile, Trophy, TvMinimalPlay, X } from "lucide-react";
+import { Clapperboard, Cpu, Flame, Gamepad2, Globe, History, ListMusic, ListPlus, Loader, Music, Newspaper, Play, Search, Smile, Trophy, TvMinimalPlay, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/components/toaster";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,8 @@ import { api, ApiRequestError } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { formatTime } from "@/lib/playback";
 import type { YouTubeResultDTO } from "@/lib/protocol";
-import { parseYouTubeId } from "@/lib/youtube";
+import { parseYouTubeId, parseYouTubePlaylistId } from "@/lib/youtube";
+import { clearYouTubeHistory, loadYouTubeHistory, type YouTubeHistoryItem } from "@/lib/prefs";
 import { useController } from "./context";
 import { useRoom } from "./store";
 
@@ -78,6 +79,8 @@ export function YouTubeBrowse({ layout, onDone }: { layout: "full" | "embedded";
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const reqId = useRef(0);
+  const [history, setHistory] = useState<YouTubeHistoryItem[]>([]);
+  useEffect(() => setHistory(loadYouTubeHistory()), []);
 
   const loadCategory = useCallback(
     async (cat: string) => {
@@ -117,10 +120,31 @@ export function YouTubeBrowse({ layout, onDone }: { layout: "full" | "embedded";
     }
   }
 
+  async function addPlaylist(url: string) {
+    setBusy("playlist");
+    setError(null);
+    try {
+      const r = await c.addPlaylist(url);
+      const n = r.added.length;
+      toast({
+        tone: "success",
+        title: `${n} video${n === 1 ? "" : "s"} added to Up next`,
+        body: [r.playlistTitle, r.skipped ? `${r.skipped} couldn’t be added` : null].filter(Boolean).join(" · ") || undefined,
+      });
+      if (r.startedNow) onDone();
+      else setQ("");
+    } catch (err) {
+      setError((err as ApiRequestError).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const text = q.trim();
     if (!text) return;
+    if (parseYouTubePlaylistId(text)) return addPlaylist(text);
     if (parseYouTubeId(text)) return play(text, true);
     if (!enabled) return setError("Paste a link from YouTube (Share → Copy link). Search isn’t switched on for this site yet.");
     const id = ++reqId.current;
@@ -182,7 +206,7 @@ export function YouTubeBrowse({ layout, onDone }: { layout: "full" | "embedded";
             data-testid="yt-input"
           />
           <Button type="submit" size="sm" variant="primary" className="absolute right-1 top-1/2 h-9 -translate-y-1/2" disabled={!q.trim() || !!busy}>
-            {parseYouTubeId(q) ? "Play" : enabled ? "Search" : "Play"}
+            {busy === "playlist" ? <Loader className="animate-spin" /> : parseYouTubePlaylistId(q) ? <><ListMusic /> Add playlist</> : parseYouTubeId(q) ? "Play" : enabled ? "Search" : "Play"}
           </Button>
         </form>
         {full && (
@@ -248,14 +272,100 @@ export function YouTubeBrowse({ layout, onDone }: { layout: "full" | "embedded";
             ))}
           </Grid>
         ) : (
-          <Grid full={full} dim={loading}>
-            {(results ?? []).map((r) => (
-              <VideoCard key={r.id} r={r} busy={busy} onPlay={() => void play(r.id, true)} onQueue={() => void play(r.id, false)} />
-            ))}
-          </Grid>
+          <>
+            {mode === "browse" && full && results?.[0] && (
+              <Hero r={results[0]} busy={busy} onPlay={() => void play(results[0]!.id, true)} onQueue={() => void play(results[0]!.id, false)} />
+            )}
+            {mode === "browse" && history.length > 0 && (
+              <WatchAgain
+                items={history}
+                busy={busy}
+                onPlay={(id) => void play(id, true)}
+                onClear={() => {
+                  clearYouTubeHistory();
+                  setHistory([]);
+                }}
+              />
+            )}
+            {mode === "browse" && full && results?.[0] && <h3 className="mb-4 mt-2 text-[15px] font-semibold text-paper">More in {CATEGORIES.find((x) => x.id === category)?.label ?? "Trending"}</h3>}
+            <Grid full={full} dim={loading}>
+              {(mode === "browse" && full ? (results ?? []).slice(1) : (results ?? [])).map((r) => (
+                <VideoCard key={r.id} r={r} busy={busy} onPlay={() => void play(r.id, true)} onQueue={() => void play(r.id, false)} />
+              ))}
+            </Grid>
+          </>
         )}
       </div>
     </div>
+  );
+}
+
+/** The top video of the shelf, shown big and cinematic. */
+function Hero({ r, busy, onPlay, onQueue }: { r: YouTubeResultDTO; busy: string | null; onPlay: () => void; onQueue: () => void }) {
+  const meta = [r.channel, r.views != null ? `${compact(r.views)} views` : null, r.publishedAt ? ago(r.publishedAt) : null].filter(Boolean).join(" · ");
+  return (
+    <section className="relative mb-8 overflow-hidden rounded-[28px] bg-ink-800 ring-1 ring-white/[0.06]" data-testid="yt-hero">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={r.thumbnailUrl.replace("hqdefault", "maxresdefault")} onLoad={(e) => {
+          // No HD thumbnail → YouTube serves a 120px grey placeholder: fall back to the standard one.
+          if (e.currentTarget.naturalWidth <= 120 && !e.currentTarget.dataset.fb) {
+            e.currentTarget.dataset.fb = "1";
+            e.currentTarget.src = r.thumbnailUrl;
+          }
+        }}
+        onError={(e) => {
+          if (!e.currentTarget.dataset.fb) {
+            e.currentTarget.dataset.fb = "1";
+            e.currentTarget.src = r.thumbnailUrl;
+          }
+        }} alt="" className="absolute inset-0 h-full w-full scale-105 object-cover" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgb(0_0_0/0.92)_0%,rgb(0_0_0/0.7)_38%,rgb(0_0_0/0.1)_75%),linear-gradient(0deg,rgb(0_0_0/0.85),transparent_55%)]" />
+      <div className="relative flex min-h-[260px] flex-col justify-end p-6 sm:min-h-[340px] sm:p-9 lg:min-h-[400px]">
+        <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-lamp-bright/90">
+          <span className="h-px w-6 bg-lamp/60" /> Top pick right now
+        </p>
+        <h2 className="mt-3 line-clamp-2 max-w-[640px] font-serif text-[32px] leading-[1.02] tracking-[-0.01em] text-paper sm:text-[44px]">{r.title}</h2>
+        {meta && <p className="mt-3 text-[13px] text-paper/65">{meta}{r.durationSec ? ` · ${formatTime(r.durationSec)}` : ""}</p>}
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Button variant="primary" size="lg" onClick={onPlay} disabled={!!busy} data-testid="yt-hero-play">
+            {busy === r.id + ":now" ? <Loader className="animate-spin" /> : <Play className="fill-current" />} Play for both
+          </Button>
+          <Button variant="secondary" size="lg" onClick={onQueue} disabled={!!busy} className="bg-white/15 backdrop-blur-md">
+            {busy === r.id + ":next" ? <Loader className="animate-spin" /> : <ListPlus />} Up next
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Videos played on this device, newest first. */
+function WatchAgain({ items, busy, onPlay, onClear }: { items: YouTubeHistoryItem[]; busy: string | null; onPlay: (id: string) => void; onClear: () => void }) {
+  return (
+    <section className="mb-8" aria-label="Watch again" data-testid="yt-history">
+      <div className="mb-3 flex items-center gap-2">
+        <History className="size-4 text-lamp" />
+        <h3 className="text-[15px] font-semibold text-paper">Watch again</h3>
+        <button onClick={onClear} className="ml-auto rounded-full px-2.5 py-1 text-[12px] text-paper-faint hover:bg-white/10 hover:text-paper">
+          Clear
+        </button>
+      </div>
+      <ul className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 scrollbar-quiet">
+        {items.map((v) => (
+          <li key={v.id} className="group w-[220px] shrink-0 sm:w-[240px]">
+            <button onClick={() => onPlay(v.id)} disabled={!!busy} className="relative block aspect-video w-full overflow-hidden rounded-xl bg-ink-800" aria-label={`Play ${v.title} again for both of you`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={v.thumbnailUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" />
+              {v.durationSec ? <span className="absolute bottom-1.5 right-1.5 rounded bg-black/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-white">{formatTime(v.durationSec)}</span> : null}
+              <span className="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition-all group-hover:bg-black/40 group-hover:opacity-100">
+                {busy === v.id + ":now" ? <Loader className="size-5 animate-spin text-white" /> : <Play className="size-6 fill-white text-white" />}
+              </span>
+            </button>
+            <p className="mt-2 line-clamp-2 text-[13px] font-medium leading-snug text-paper/90">{v.title}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

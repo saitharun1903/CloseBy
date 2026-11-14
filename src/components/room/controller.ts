@@ -364,6 +364,15 @@ export class RoomController {
     useRoom.setState({ browser: r.browser });
   }
 
+  /** Add a whole YouTube playlist to Up next; starts it if nothing is playing. */
+  async addPlaylist(url: string) {
+    const r = await api<{ playlistTitle: string | null; added: QueueItemDTO[]; skipped: number; items: QueueItemDTO[] }>(`/api/rooms/${this.roomId}/queue/playlist`, { body: { url } });
+    useRoom.setState({ queue: r.items });
+    const startedNow = !useRoom.getState().playback.mediaId && r.added[0];
+    if (startedNow) await this.sendIntent({ type: "load", mediaId: r.added[0]!.id });
+    return { ...r, startedNow: !!startedNow };
+  }
+
   async addToQueue(body: { kind: "url"; url: string; title?: string } | { kind: "youtube"; url: string } | { kind: "file"; fileName: string; fileSize: number; durationSec?: number | null }) {
     const r = await api<{ item: QueueItemDTO; items: QueueItemDTO[] }>(`/api/rooms/${this.roomId}/queue`, { body });
     useRoom.setState({ queue: r.items });

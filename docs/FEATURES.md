@@ -44,6 +44,10 @@ Legend: **✅ Auto** — implemented and covered by automated tests that were ru
 | Shared queue: add / remove / reorder / play next / now-playing / host auto-advance | ✅ Auto (auto-advance ✅ Impl) |
 | **YouTube built in**: paste a link, synced play/pause/seek/speed, policy-compliant layout | ✅ Auto against a stand-in YouTube player · 🧪 Manual with real YouTube |
 | **YouTube home** (dedicated button): trending by category (Music, Movies, Shows, Comedy, Gaming, Sports, News, Tech), search with durations/views, Play for both / Up next, "Open real YouTube together" in the shared browser; partner is notified when something starts | ✅ Auto against a stand-in Data API · needs `YOUTUBE_API_KEY` in production |
+| YouTube home: featured "top pick" hero per category, "Watch again" row (this device) | ✅ Auto |
+| Whole YouTube playlists → Up next in order (up to 50; non-embeddable skipped) | ✅ Auto (integration + E2E) |
+| YouTube chapters: seek-bar markers, current chapter, chapter menu that jumps for both | ✅ Auto (parser unit + E2E) |
+| YouTube subtitles (CC) toggle, per person | ✅ Auto against the stand-in player · 🧪 Manual on real YouTube |
 | **Shared cloud browser (Hyperbeam)**: start/join/close, one per room, cost timeouts, token never broadcast | ✅ Auto (server + UI when disabled) · 🧪 Manual once `HYPERBEAM_API_KEY` is set |
 | Streaming-service integrations (DRM) | ⏳ Not possible without licensed provider SDKs; deliberately unsupported |
 
