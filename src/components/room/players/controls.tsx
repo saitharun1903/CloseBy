@@ -60,10 +60,41 @@ export function PlayerControls({
   const partnerNotReady = !!partnerMedia && !!partnerName && (partnerMedia.mediaId !== mediaId || !partnerMedia.ready);
   const shown = scrub ?? current;
   const marks = chapters && chapters.length > 1 && duration > 0 ? chapters : null;
+  const moments = useRoom((s) => (mediaId ? s.moments[mediaId] : undefined));
+  // Group reactions that land close together on the bar (1% buckets).
+  const momentPins = (() => {
+    if (!moments?.length || duration <= 0) return [];
+    const bins = new Map<number, { t: number; emoji: string; n: number }>();
+    for (const m of moments) {
+      if (m.t > duration) continue;
+      const b = Math.round((m.t / duration) * 100);
+      const cur = bins.get(b);
+      bins.set(b, { t: cur?.t ?? m.t, emoji: m.emoji, n: (cur?.n ?? 0) + 1 });
+    }
+    return [...bins.values()];
+  })();
   const currentChapter = marks ? [...marks].reverse().find((ch) => ch.start <= shown) : null;
   return (
     <div className={cn("text-white", className)}>
       <div className="relative">
+      {momentPins.length > 0 && (
+        <div className="absolute inset-x-0 -top-6 z-10 h-6" data-testid="moments">
+          {momentPins.map((m) => (
+            <button
+              key={m.t}
+              onClick={() => onSeekCommit(Math.max(0, m.t - 2))}
+              className="absolute bottom-0 flex -translate-x-1/2 items-center rounded-full px-0.5 text-[14px] leading-none drop-shadow-[0_1px_2px_rgb(0_0_0/0.8)] transition-transform hover:scale-125"
+              style={{ left: `${(m.t / duration) * 100}%` }}
+              aria-label={`Jump to a moment you reacted ${m.emoji} at ${formatTime(m.t)} (for both)`}
+              title={`${formatTime(m.t)} · jump here for both`}
+              data-testid="moment"
+            >
+              {m.emoji}
+              {m.n > 1 && <span className="ml-0.5 rounded-full bg-black/60 px-1 text-[9px] font-bold text-white">{m.n}</span>}
+            </button>
+          ))}
+        </div>
+      )}
       {marks && (
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 z-10 -mt-[3px] h-1.5" data-testid="chapter-marks">
           {marks.slice(1).map((ch) => (

@@ -70,6 +70,14 @@ export interface RoomStore {
   /** Bumps when a keepsake photo should be taken. */
   snapSeq: number;
   shortcutsOpen: boolean;
+  /** Reactions pinned to moments of each film (by media id). */
+  moments: Record<string, { t: number; emoji: string }[]>;
+  /** Drawing mode on this screen. */
+  drawing: boolean;
+  /** "Ask each other" card showing on both screens. */
+  card: number | null;
+  /** Tonight so far (this device). */
+  stats: { togetherMs: number; films: string[]; reactions: number; photos: number };
   sync: SyncState;
   layoutPref: LayoutPref;
   sound: SoundPrefs;
@@ -117,6 +125,10 @@ export function initRoomStore(s: RoomStateDTO) {
       countdownAt: null,
       snapSeq: 0,
       shortcutsOpen: false,
+      moments: {},
+      drawing: false,
+      card: null,
+      stats: { togetherMs: 0, films: [], reactions: 0, photos: 0 },
       sync: "idle",
       layoutPref: "auto",
       sound: loadSoundPrefs(),

@@ -18,7 +18,9 @@ import {
   chatHistorySchema,
   chatMessageSchema,
   mediaReadySchema,
+  cardSchema,
   countdownSchema,
+  drawSchema,
   nudgeSchema,
   PEER_TOPICS,
   snapSchema,
@@ -91,6 +93,8 @@ export class RoomController {
   private typingTimer?: ReturnType<typeof setTimeout>;
   private countdownTimer?: ReturnType<typeof setTimeout>;
   private lastSnapAt = 0;
+  private statsTimer?: ReturnType<typeof setInterval>;
+  private strokeListeners = new Set<(s: { id: string; pts: [number, number][]; end?: boolean; mine: boolean }) => void>();
   private stateTimer?: ReturnType<typeof setInterval>;
   private retry = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
@@ -109,6 +113,7 @@ export class RoomController {
     this.wire(this.room);
     void this.syncClock();
     this.clockTimer = setInterval(() => void this.syncClock(), 60_000);
+    this.statsTimer = setInterval(() => this.tickStats(), 1000);
     this.chatTimer = setInterval(() => this.expireChat(), 30_000);
     // Safety net: server broadcasts are best-effort, so re-sync periodically. Playback merges by
     // version, so this can never roll state back.
@@ -232,6 +237,7 @@ export class RoomController {
     clearTimeout(this.talkRelease);
     clearTimeout(this.typingTimer);
     clearTimeout(this.countdownTimer);
+    clearInterval(this.statsTimer);
     clearInterval(this.stateTimer);
     document.removeEventListener("visibilitychange", this.onVisible);
     clearTimeout(this.retryTimer);
@@ -440,7 +446,58 @@ export class RoomController {
 
   sendReaction(emoji: string) {
     this.showReaction(emoji, true);
-    void this.publish(PEER_TOPICS.reaction, { emoji }, { reliable: false });
+    // During a film, pin it to this moment so it shows on the timeline for both.
+    const pb = useRoom.getState().playback;
+    const moment = pb.mediaId ? { mid: pb.mediaId, t: Math.round(expectedPosition(pb, serverNow()) * 10) / 10 } : {};
+    if (pb.mediaId) this.addMoment(pb.mediaId, moment.t!, emoji);
+    this.countReaction();
+    void this.publish(PEER_TOPICS.reaction, { emoji, ...moment }, { reliable: false });
+  }
+
+  private addMoment(mid: string, t: number, emoji: string) {
+    useRoom.setState((s) => ({ moments: { ...s.moments, [mid]: [...(s.moments[mid] ?? []), { t, emoji }].slice(-300) } }));
+  }
+
+  private countReaction() {
+    useRoom.setState((s) => ({ stats: { ...s.stats, reactions: s.stats.reactions + 1 } }));
+  }
+
+  /** Tonight so far: time together (both in the room), films started, photos. */
+  private tickStats() {
+    const s = useRoom.getState();
+    const together = s.conn === "connected" && this.room.remoteParticipants.size > 0;
+    const pb = s.playback;
+    const newFilm = pb.mediaId && pb.status === "playing" && !s.stats.films.includes(pb.mediaId);
+    if (!together && !newFilm) return;
+    useRoom.setState({
+      stats: {
+        ...s.stats,
+        togetherMs: s.stats.togetherMs + (together ? 1000 : 0),
+        films: newFilm ? [...s.stats.films, pb.mediaId!] : s.stats.films,
+      },
+    });
+  }
+
+  /* ───────────── drawing together ───────────── */
+
+  onStroke(fn: (s: { id: string; pts: [number, number][]; end?: boolean; mine: boolean }) => void) {
+    this.strokeListeners.add(fn);
+    return () => {
+      this.strokeListeners.delete(fn);
+    };
+  }
+
+  /** Send a piece of my stroke (lossy: a dropped piece just leaves a small gap). */
+  sendStroke(id: string, pts: [number, number][], end = false) {
+    void this.publish(PEER_TOPICS.draw, { id, pts, end }, { reliable: end });
+  }
+
+  /* ───────────── "Ask each other" ───────────── */
+
+  /** Show a question card on both screens (null closes it for both). */
+  setCard(i: number | null) {
+    useRoom.setState({ card: i });
+    void this.publish(PEER_TOPICS.card, { i });
   }
 
   /** "Thinking of you": hearts on both screens, and the partner's phone buzzes. */
@@ -491,7 +548,7 @@ export class RoomController {
     const now = Date.now();
     if (now - this.lastSnapAt < 3000) return;
     this.lastSnapAt = now;
-    useRoom.setState((s) => ({ snapSeq: s.snapSeq + 1 }));
+    useRoom.setState((s) => ({ snapSeq: s.snapSeq + 1, stats: { ...s.stats, photos: s.stats.photos + 1 } }));
     void this.publish(PEER_TOPICS.snap, { at: now });
   }
 
@@ -607,7 +664,22 @@ export class RoomController {
       }
       case PEER_TOPICS.reaction: {
         const r = reactionSchema.safeParse(data);
-        if (r.success) this.showReaction(r.data.emoji, false);
+        if (!r.success) return;
+        this.showReaction(r.data.emoji, false);
+        this.countReaction();
+        if (r.data.mid && r.data.t !== undefined) this.addMoment(r.data.mid, r.data.t, r.data.emoji);
+        break;
+      }
+      case PEER_TOPICS.draw: {
+        const d = drawSchema.safeParse(data);
+        if (!d.success) return;
+        const stroke = { id: `p:${d.data.id}`, pts: d.data.pts as [number, number][], end: d.data.end, mine: false };
+        this.strokeListeners.forEach((fn) => fn(stroke));
+        break;
+      }
+      case PEER_TOPICS.card: {
+        const cd = cardSchema.safeParse(data);
+        if (cd.success) useRoom.setState({ card: cd.data.i });
         break;
       }
       case PEER_TOPICS.ping: {
@@ -635,7 +707,7 @@ export class RoomController {
       case PEER_TOPICS.snap: {
         if (!snapSchema.safeParse(data).success) return;
         this.lastSnapAt = Date.now();
-        useRoom.setState((st) => ({ snapSeq: st.snapSeq + 1 }));
+        useRoom.setState((st) => ({ snapSeq: st.snapSeq + 1, stats: { ...st.stats, photos: st.stats.photos + 1 } }));
         break;
       }
       case PEER_TOPICS.nudge: {

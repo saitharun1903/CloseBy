@@ -1,6 +1,8 @@
 "use client";
 import * as D from "@radix-ui/react-dialog";
-import { Keyboard, X } from "lucide-react";
+import { Keyboard, MessageCircleHeart, X } from "lucide-react";
+import { nextQuestion, QUESTIONS } from "@/lib/questions";
+import { useController } from "./context";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
@@ -127,5 +129,74 @@ export function ShortcutsHelp() {
         </D.Content>
       </D.Portal>
     </D.Root>
+  );
+}
+
+/**
+ * "Ask each other": the same conversation card on both screens. Either of you
+ * can flip to the next one or put it away. Over a YouTube player it sits in the
+ * camera rail so nothing covers the video.
+ */
+export function QuestionCard({ placement }: { placement: "top" | "rail" | "bottom" }) {
+  const besideRail = placement === "rail";
+  const c = useController();
+  const i = useRoom((s) => s.card);
+  if (i === null) return null;
+  const q = QUESTIONS[i % QUESTIONS.length];
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute z-30 flex",
+        placement === "rail" && "right-3 top-[calc(var(--safe-top)+72px)] w-[clamp(200px,22vw,300px)]",
+        placement === "top" && "inset-x-0 top-[calc(var(--safe-top)+72px)] justify-center px-3",
+        // Phones watching YouTube: the video is on top, so the card sits over the cameras below it.
+        placement === "bottom" && "inset-x-0 bottom-[calc(var(--safe-bottom)+104px)] justify-center px-3",
+      )}
+      data-testid="question-card"
+    >
+      <motion.div
+        key={i}
+        initial={{ opacity: 0, y: -10, rotate: -1.5, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 26 }}
+        className="pointer-events-auto relative w-full max-w-[460px] overflow-hidden rounded-[24px] border border-[#ffd3a1]/20 bg-[linear-gradient(160deg,#2a1d14,#14100c)] p-5 shadow-float"
+      >
+        <div aria-hidden className="absolute -right-10 -top-10 size-40 rounded-full bg-[radial-gradient(closest-side,rgb(255_179_107/0.25),transparent)]" />
+        <p className="relative flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-lamp-bright/80">
+          <MessageCircleHeart className="size-3.5" /> Ask each other
+        </p>
+        <p className={cn("relative mt-3 font-serif leading-[1.12] text-paper", besideRail ? "text-[20px]" : "text-[26px] sm:text-[30px]")} data-testid="question-text">
+          {q}
+        </p>
+        <div className="relative mt-4 flex gap-2">
+          <button onClick={() => c.setCard(nextQuestion(i))} className="h-9 rounded-full bg-paper px-4 text-[13px] font-semibold text-[#140e09] hover:bg-white" data-testid="question-next">
+            Next question
+          </button>
+          <button onClick={() => c.setCard(null)} className="h-9 rounded-full px-3 text-[13px] font-medium text-paper-dim hover:bg-white/10 hover:text-paper" data-testid="question-close">
+            Done
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+/** "Tonight so far" — shown when you leave. */
+export function TonightRecap() {
+  const s = useRoom((st) => st.stats);
+  const mins = Math.round(s.togetherMs / 60_000);
+  if (mins < 1 && !s.films.length && !s.reactions && !s.photos) return null;
+  const time = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`;
+  const bits = [
+    s.films.length ? `${s.films.length} ${s.films.length === 1 ? "film" : "films"}` : null,
+    s.reactions ? `${s.reactions} ${s.reactions === 1 ? "reaction" : "reactions"}` : null,
+    s.photos ? `${s.photos} ${s.photos === 1 ? "photo" : "photos"}` : null,
+  ].filter(Boolean);
+  return (
+    <div className="mb-4 rounded-2xl border border-[#ffd3a1]/15 bg-[linear-gradient(160deg,rgb(255_179_107/0.1),transparent)] p-4" data-testid="recap">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-lamp-bright/80">Tonight so far</p>
+      <p className="mt-1.5 font-serif text-[26px] leading-tight text-paper">{mins >= 1 ? `${time} together` : "A moment together"}</p>
+      {bits.length > 0 && <p className="mt-1 text-[13px] text-paper-dim">{bits.join(" · ")}</p>}
+    </div>
   );
 }

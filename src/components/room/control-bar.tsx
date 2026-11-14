@@ -2,6 +2,8 @@
 import { Room, Track } from "livekit-client";
 import {
   Loader,
+  MessageCircleHeart,
+  Pencil,
   Camera,
   Keyboard,
   Moon,
@@ -42,7 +44,9 @@ import { MicMeter } from "./mic-meter";
 import { serverNow, setSound, useRoom, type LayoutPref } from "./store";
 import { toast } from "@/components/toaster";
 import { canPopOut, popOutPartner } from "./pip";
+import { TonightRecap } from "./overlays";
 import { SLEEP_TIMER_MINUTES } from "@/lib/protocol";
+import { nextQuestion } from "@/lib/questions";
 
 type CtlProps = {
   label: string;
@@ -224,6 +228,45 @@ function NudgeButton({ wide }: { wide?: boolean }) {
   );
 }
 
+/** Draw together over the stage (not over YouTube's player). */
+function DrawButton() {
+  const on = useRoom((s) => s.drawing);
+  const youTube = useRoom((s) => !s.browser.active && s.queue.find((q) => q.id === s.playback.mediaId)?.kind === "youtube");
+  return (
+    <Tooltip label={youTube ? "Drawing isn’t allowed over YouTube’s player" : on ? "Stop drawing" : "Draw together"}>
+      <button
+        onClick={() => useRoom.setState({ drawing: !on, panel: null })}
+        disabled={youTube}
+        aria-pressed={on}
+        aria-label={on ? "Stop drawing" : "Draw together on the screen"}
+        className={cn("grid size-11 shrink-0 place-items-center rounded-full transition-transform active:scale-95 disabled:opacity-40", on ? "bg-lamp text-lamp-ink" : "bg-white/[0.12] text-white hover:bg-white/[0.2]")}
+        data-testid="draw-toggle"
+      >
+        <Pencil className="size-5" />
+      </button>
+    </Tooltip>
+  );
+}
+
+/** "Ask each other": the same question card on both screens. */
+function AskButton() {
+  const c = useController();
+  const card = useRoom((s) => s.card);
+  return (
+    <Tooltip label="Ask each other a question">
+      <button
+        onClick={() => c.setCard(card === null ? nextQuestion(null) : null)}
+        aria-pressed={card !== null}
+        aria-label="Ask each other a question"
+        className={cn("grid size-11 shrink-0 place-items-center rounded-full transition-transform active:scale-95", card !== null ? "bg-lamp text-lamp-ink" : "bg-white/[0.12] text-white hover:bg-white/[0.2]")}
+        data-testid="ask"
+      >
+        <MessageCircleHeart className="size-5" />
+      </button>
+    </Tooltip>
+  );
+}
+
 /** Photo booth: a keepsake photo of the two of you, on both screens. */
 function SnapButton() {
   const c = useController();
@@ -260,6 +303,8 @@ function ReactionsButton() {
           ))}
           <NudgeButton />
           <SnapButton />
+          <DrawButton />
+          <AskButton />
         </>
       }
     >
@@ -325,6 +370,8 @@ function MoreButton({ immersive, onToggleImmersive, onQueue }: { immersive: bool
                 <NudgeButton wide />
               </div>
               <SnapButton />
+              <DrawButton />
+              <AskButton />
             </div>
           </section>
           <section className="p-4">
@@ -460,6 +507,7 @@ export function LeaveDialog({ open, onOpenChange, isHost, onLeave, onEnd }: { op
         title={isHost ? "Leave or end the room?" : "Leave the room?"}
         description={isHost ? "If you just leave, your guest can stay and you can come back. Ending closes the room for both of you and deletes it." : "You’ll free your seat. You can rejoin with the invite link while there’s space."}
       >
+        <TonightRecap />
         <div className="flex flex-col gap-2">
           <Button variant="secondary" size="lg" onClick={onLeave} data-testid="confirm-leave">
             <LogOut /> {isHost ? "Leave for now" : "Leave"}

@@ -1,5 +1,5 @@
 "use client";
-import { Captions, FolderOpen, Loader, Maximize2, Pause, Play, TriangleExclamationPoint } from "lucide-react";
+import { Captions, FolderOpen, Loader, Maximize2, Pause, Play, TriangleExclamationPoint, PictureInPicture2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "@/components/toaster";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -226,7 +226,12 @@ export function Html5Player({ item, mode, onExpand }: { item: QueueItemDTO; mode
             rate={playback.rate}
             onRate={(r) => void sync.act({ type: "rate", rate: r })}
             disabled={!loaded || !!error}
-            extra={<SubtitlesMenu subs={subs} subsOn={subsOn} setSubsOn={setSubsOn} pickSubs={pickSubs} />}
+            extra={
+              <>
+                <SubtitlesMenu subs={subs} subsOn={subsOn} setSubsOn={setSubsOn} pickSubs={pickSubs} />
+                <PopOutFilm video={videoRef} />
+              </>
+            }
           />
         </div>
       )}
@@ -317,5 +322,29 @@ function FilePrompt({ item, onPick, compact }: { item: QueueItemDTO; onPick: (f:
         {!compact && <p className="mt-3 text-[12px] text-paper-faint">or drop it here</p>}
       </div>
     </div>
+  );
+}
+
+/** Keep the film playing in a floating window while you use other apps or tabs. */
+function PopOutFilm({ video }: { video: React.RefObject<HTMLVideoElement | null> }) {
+  const [ok, setOk] = useState(false);
+  useEffect(() => setOk(typeof document !== "undefined" && !!document.pictureInPictureEnabled), []);
+  if (!ok) return null;
+  return (
+    <Tooltip label="Pop out the film">
+      <button
+        aria-label="Pop out the film into a floating window"
+        className="grid size-10 place-items-center rounded-full hover:bg-white/10"
+        onClick={() => {
+          const v = video.current;
+          if (!v) return;
+          if (document.pictureInPictureElement === v) void document.exitPictureInPicture().catch(() => {});
+          else void v.requestPictureInPicture().catch(() => {});
+        }}
+        data-testid="film-pip"
+      >
+        <PictureInPicture2 className="size-5" />
+      </button>
+    </Tooltip>
   );
 }

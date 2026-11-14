@@ -112,4 +112,63 @@ test.describe("together extras", () => {
     await host.page.locator("body").press("?");
     await expect(host.page.getByTestId("shortcuts")).toContainText("Play / pause for both");
   });
+
+  test("draw together: my lines appear on my partner's screen", async ({ browser }) => {
+    const { host, guest } = await pair(browser);
+    await host.page.getByTestId("ctl-react").click();
+    await host.page.getByTestId("draw-toggle").click();
+    await expect(host.page.getByTestId("draw-hint")).toBeVisible();
+    const box = (await host.page.getByTestId("draw-layer").boundingBox())!;
+    await host.page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.4);
+    await host.page.mouse.down();
+    for (let i = 1; i <= 12; i++) await host.page.mouse.move(box.x + box.width * (0.3 + i * 0.02), box.y + box.height * 0.4, { steps: 2 });
+    await host.page.mouse.up();
+    // Ink on the guest's canvas.
+    await expect
+      .poll(() =>
+        guest.page.getByTestId("draw-layer").evaluate((c: HTMLCanvasElement) => {
+          const d = c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data;
+          for (let i = 3; i < d.length; i += 4) if (d[i]! > 0) return true;
+          return false;
+        }),
+      )
+      .toBe(true);
+    await host.page.getByTestId("draw-stop").click();
+    await expect(host.page.getByTestId("draw-hint")).toHaveCount(0);
+  });
+
+  test("ask each other: the same card on both screens; either can flip or close it", async ({ browser }) => {
+    const { host, guest } = await pair(browser);
+    await host.page.getByTestId("ctl-react").click();
+    await host.page.getByTestId("ask").click();
+    const first = await host.page.getByTestId("question-text").textContent();
+    await expect(guest.page.getByTestId("question-text")).toHaveText(first!);
+    await guest.page.getByTestId("question-next").click();
+    await expect(guest.page.getByTestId("question-text")).not.toHaveText(first!);
+    const second = await guest.page.getByTestId("question-text").textContent();
+    await expect(host.page.getByTestId("question-text")).toHaveText(second!);
+    await host.page.getByTestId("question-close").click();
+    for (const p of [host.page, guest.page]) await expect(p.getByTestId("question-card")).toHaveCount(0);
+  });
+
+  test("reactions during a film become moments on both timelines; leaving shows tonight's recap", async ({ browser }) => {
+    const { host, guest } = await pair(browser);
+    await loadFilmForBoth(host.page, guest.page);
+    await host.page.locator("[data-testid=player]").hover();
+    await host.page.getByTestId("play-toggle").click();
+    await expect.poll(async () => (await videoState(guest.page)).paused).toBe(false);
+    await host.page.waitForTimeout(1500);
+    await host.page.mouse.move(300, 300);
+    await host.page.getByTestId("ctl-react").click();
+    await host.page.getByRole("button", { name: "Send 😂" }).click();
+    await host.page.keyboard.press("Escape");
+    for (const p of [host.page, guest.page]) {
+      await p.locator("[data-testid=player]").hover();
+      await expect(p.getByTestId("moment")).toContainText("😂");
+    }
+    await guest.page.mouse.move(300, 300);
+    await guest.page.getByTestId("ctl-leave").click();
+    await expect(guest.page.getByTestId("recap")).toContainText("1 film");
+    await expect(guest.page.getByTestId("recap")).toContainText("1 reaction");
+  });
 });
