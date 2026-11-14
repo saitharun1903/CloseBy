@@ -14,7 +14,7 @@ import type { MediaAdapter } from "./adapter";
 import { PlayerControls } from "./controls";
 import { usePlayerChrome } from "./use-player-chrome";
 import { useSyncEngine } from "./use-sync";
-import { useMediaVolume } from "./use-media-volume";
+import { clamp01, useMediaVolume } from "./use-media-volume";
 
 function useSource(item: QueueItemDTO, file: File | undefined) {
   // Created and revoked in the same effect so StrictMode's double-mount can't leave a dead URL.
@@ -92,7 +92,7 @@ export function Html5Player({ item, mode, onExpand }: { item: QueueItemDTO; mode
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    v.volume = mediaVolume;
+    v.volume = clamp01(mediaVolume);
     v.muted = mediaMuted;
   }, [mediaVolume, mediaMuted, src]);
 
@@ -148,7 +148,7 @@ export function Html5Player({ item, mode, onExpand }: { item: QueueItemDTO; mode
           onLoadedMetadata={(e) => {
             const v = e.currentTarget;
             setDuration(Number.isFinite(v.duration) ? v.duration : (item.durationSec ?? 0));
-            v.volume = mediaVolume;
+            v.volume = clamp01(mediaVolume);
             v.muted = mediaMuted;
             setLoaded(true);
           }}

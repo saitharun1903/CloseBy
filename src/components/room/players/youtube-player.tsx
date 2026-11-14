@@ -14,7 +14,7 @@ import { PlayerControls } from "./controls";
 import { TapToPlay } from "./html5-player";
 import { usePlayerChrome } from "./use-player-chrome";
 import { useSyncEngine } from "./use-sync";
-import { useMediaVolume } from "./use-media-volume";
+import { clamp01, useMediaVolume } from "./use-media-volume";
 import { explainYouTubeError, loadYouTubeApi, YT_STATE, type YTPlayer } from "./youtube-api";
 
 /**
@@ -174,7 +174,7 @@ export function YouTubePlayer({ item, mode, onExpand }: { item: QueueItemDTO; mo
   useEffect(() => {
     const p = player.current;
     if (!p || !ready) return;
-    p.setVolume(Math.round(volume * 100));
+    p.setVolume(Math.round(clamp01(volume) * 100));
     if (muted) p.mute();
     else p.unMute();
   }, [volume, muted, ready]);

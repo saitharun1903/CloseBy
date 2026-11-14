@@ -14,7 +14,7 @@ export function useMediaVolume(): { volume: number; muted: boolean } {
   const base = useRoom((s) => s.sound.mediaVolume);
   const muted = useRoom((s) => s.mediaMuted);
   const duck = useRoom((s) => s.talking && s.sound.autoDuck !== false);
-  const target = base * (duck ? DUCK_LEVEL : 1);
+  const target = clamp01(base * (duck ? DUCK_LEVEL : 1));
   const [volume, setVolume] = useState(target);
   const current = useRef(target);
 
@@ -29,9 +29,11 @@ export function useMediaVolume(): { volume: number; muted: boolean } {
     const start = performance.now();
     let raf = 0;
     const step = (now: number) => {
-      const t = Math.min(1, (now - start) / ms);
+      // A frame's timestamp can be slightly *earlier* than `start`: never let t go negative
+      // (that would push the volume past its end points and the browser throws above 1).
+      const t = Math.min(1, Math.max(0, (now - start) / ms));
       const eased = 1 - (1 - t) * (1 - t);
-      current.current = from + (target - from) * eased;
+      current.current = clamp01(from + (target - from) * eased);
       setVolume(current.current);
       if (t < 1) raf = requestAnimationFrame(step);
     };
@@ -40,4 +42,9 @@ export function useMediaVolume(): { volume: number; muted: boolean } {
   }, [target]);
 
   return { volume, muted };
+}
+
+/** Media volume must stay within [0, 1] or the browser throws. */
+export function clamp01(v: number) {
+  return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1;
 }

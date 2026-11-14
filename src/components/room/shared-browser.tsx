@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import { useController } from "./context";
 import { setSound, useRoom } from "./store";
 import { toast } from "@/components/toaster";
-import { useMediaVolume } from "./players/use-media-volume";
+import { clamp01, useMediaVolume } from "./players/use-media-volume";
 
 type HB = { volume: number; playoutDelay: boolean; ping(): void; destroy(): void; userId: string };
 type PeerCursor = { x: number; y: number; at: number };
@@ -20,7 +20,9 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
   const c = useController();
   const box = useRef<HTMLDivElement>(null);
   const hb = useRef<HB | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  // "loading" and "reconnecting" keep our own screen on top of the stream area, so the
+  // provider's splash never shows; "ready" only once the picture is actually playing.
+  const [status, setStatus] = useState<"loading" | "reconnecting" | "ready" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
   const { volume, muted } = useMediaVolume();
   const startedBy = useRoom((s) => s.participants.find((p) => p.id === s.browser.startedBy)?.displayName);
@@ -80,6 +82,7 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
           onConnectionStateChange: (e) => {
             if (cancelled) return;
             if (e.state === "playing") setStatus("ready");
+            if (e.state === "reconnecting" || e.state === "connecting") setStatus((s) => (s === "ready" ? "reconnecting" : s));
             if (e.state === "failed") {
               setStatus("error");
               setError("Couldn’t stream the shared browser. Your network may be blocking it.");
@@ -91,7 +94,23 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
           return;
         }
         hb.current = inst;
-        setStatus("ready");
+        // Belt and braces: also treat the stream as playing once its video has frames.
+        const started = Date.now();
+        const watch = setInterval(() => {
+          if (cancelled) return clearInterval(watch);
+          const v = box.current?.querySelector("video");
+          if (v && v.readyState >= 2 && v.videoWidth > 0) {
+            setStatus((s) => (s === "loading" || s === "reconnecting" ? "ready" : s));
+            clearInterval(watch);
+          } else if (Date.now() - started > 25_000) {
+            clearInterval(watch);
+            setStatus((s) => {
+              if (s !== "loading") return s;
+              setError("The shared browser is taking longer than usual to appear. Your network may be slow or blocking it.");
+              return "error";
+            });
+          }
+        }, 300);
       } catch (e) {
         if (cancelled) return;
         setStatus("error");
@@ -106,7 +125,7 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
   }, [c, attempt]);
 
   useEffect(() => {
-    if (hb.current) hb.current.volume = muted ? 0 : volume;
+    if (hb.current) hb.current.volume = muted ? 0 : clamp01(volume);
   }, [volume, muted]);
 
   useEffect(() => {
@@ -185,16 +204,21 @@ export function SharedBrowser({ mode }: { mode: "main" | "mini" }) {
           onTouchStart={onInput}
         />
         {peer && status === "ready" && <PartnerPointer box={box} cursor={peer} name={peerName} />}
-        {status === "loading" && (
-          <div className="absolute inset-0 grid place-items-center">
-            <div className="flex flex-col items-center gap-3 text-paper-dim">
-              <Loader className="size-7 animate-spin" />
-              <span className="text-[13px]">Starting the shared browser…</span>
+        {(status === "loading" || status === "reconnecting") && (
+          <div className="absolute inset-0 z-10 grid place-items-center overflow-hidden bg-ink-900" data-testid="browser-loading">
+            <div aria-hidden className="absolute left-1/2 top-[-40%] h-[90%] w-[80%] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(255_179_107/0.16),transparent)]" />
+            <div className="relative flex flex-col items-center gap-4 text-center">
+              <span className="relative grid size-14 place-items-center">
+                <span className="absolute inset-0 animate-ping rounded-full bg-lamp/15" />
+                <Globe className="relative size-7 text-lamp" />
+              </span>
+              <span className="font-serif text-[26px] leading-none text-paper">{status === "reconnecting" ? "Reconnecting…" : "Opening your browser…"}</span>
+              <span className="max-w-[300px] text-[13px] text-paper-dim">{status === "reconnecting" ? "Hold on — the picture will be back in a moment." : "A real browser just for the two of you. This takes a few seconds."}</span>
             </div>
           </div>
         )}
         {status === "error" && (
-          <div className="absolute inset-0 grid place-items-center p-6 text-center" role="alert">
+          <div className="absolute inset-0 z-10 grid place-items-center bg-ink-900 p-6 text-center" role="alert">
             <div className="max-w-[380px]">
               <TriangleExclamationPoint className="mx-auto size-7 text-danger" />
               <p className="mt-3 text-[16px] font-semibold">{error}</p>
