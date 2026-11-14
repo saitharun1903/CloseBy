@@ -1,4 +1,4 @@
-import { youtubeThumb } from "@/lib/youtube";
+import { parseChapters, youtubeThumb, type Chapter } from "@/lib/youtube";
 import { AppError } from "./errors";
 
 export interface YouTubeVideoInfo {
@@ -30,6 +30,10 @@ export interface YouTubeService {
   /** null when not configured (no YOUTUBE_API_KEY). */
   search: ((q: string) => Promise<YouTubeVideoInfo[]>) | null;
   trending: ((category: string) => Promise<YouTubeVideoInfo[]>) | null;
+  /** Up to 50 playable videos of a playlist, in order. */
+  playlist: ((listId: string) => Promise<{ title: string | null; videos: YouTubeVideoInfo[] }>) | null;
+  /** Chapters from the video's description ([] when it has none). */
+  chapters: ((videoId: string) => Promise<Chapter[]>) | null;
 }
 
 type Fetch = typeof fetch;
@@ -47,7 +51,7 @@ function decodeEntities(s: string) {
 
 interface VideoResource {
   id?: string;
-  snippet?: { title?: string; channelTitle?: string; publishedAt?: string; liveBroadcastContent?: string };
+  snippet?: { title?: string; channelTitle?: string; publishedAt?: string; liveBroadcastContent?: string; description?: string };
   contentDetails?: { duration?: string };
   statistics?: { viewCount?: string };
   status?: { embeddable?: boolean };
@@ -77,6 +81,7 @@ export function createYouTubeService(
   const region = opts.region ?? "IN";
   // Trending changes slowly; caching keeps quota use tiny (1 unit per refresh).
   const trendingCache = new Map<string, { at: number; items: YouTubeVideoInfo[] }>();
+  const chapterCache = new Map<string, { at: number; chapters: Chapter[] }>();
 
   async function call(path: string, params: Record<string, string>) {
     let res: Response;
@@ -140,6 +145,31 @@ export function createYouTubeService(
           const items = (j.items ?? []).map((v) => toInfo(v as VideoResource)).filter((x): x is YouTubeVideoInfo => !!x);
           trendingCache.set(key, { at: Date.now(), items });
           return items;
+        }
+      : null,
+    playlist: apiKey
+      ? async (listId) => {
+          // playlistItems.list (1 unit) + videos.list (1 unit) for durations and embeddability.
+          const [items, meta] = await Promise.all([
+            call("playlistItems", { part: "contentDetails", playlistId: listId, maxResults: "50" }) as Promise<{ items?: { contentDetails?: { videoId?: string } }[] }>,
+            call("playlists", { part: "snippet", id: listId }) as Promise<{ items?: { snippet?: { title?: string } }[] }>,
+          ]);
+          const ids = [...new Set((items.items ?? []).map((i) => i.contentDetails?.videoId).filter((x): x is string => !!x))];
+          if (!ids.length) throw new AppError("bad_request", "That playlist is empty, private, or can’t be read.");
+          const title = meta.items?.[0]?.snippet?.title;
+          return { title: title ? decodeEntities(title).slice(0, 120) : null, videos: await details(ids) };
+        }
+      : null,
+    chapters: apiKey
+      ? async (videoId) => {
+          const hit = chapterCache.get(videoId);
+          if (hit && Date.now() - hit.at < 6 * 3600_000) return hit.chapters;
+          const j = await call("videos", { part: "snippet,contentDetails", id: videoId });
+          const v = (j.items ?? [])[0] as VideoResource | undefined;
+          const chapters = parseChapters(v?.snippet?.description, parseIsoDuration(v?.contentDetails?.duration));
+          if (chapterCache.size > 500) chapterCache.clear();
+          chapterCache.set(videoId, { at: Date.now(), chapters });
+          return chapters;
         }
       : null,
   };

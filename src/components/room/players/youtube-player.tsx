@@ -1,5 +1,9 @@
 "use client";
-import { Loader, Maximize2, Pause, Play, TriangleExclamationPoint } from "lucide-react";
+import { Captions, CaptionsOff, Loader, Maximize2, Pause, Play, TriangleExclamationPoint } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
+import { api } from "@/lib/api";
+import { loadYouTubeCaptions, rememberYouTube, saveYouTubeCaptions } from "@/lib/prefs";
+import type { Chapter } from "@/lib/youtube";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { QueueItemDTO } from "@/lib/protocol";
@@ -25,6 +29,10 @@ export function YouTubePlayer({ item, mode, onExpand }: { item: QueueItemDTO; mo
   const stateRef = useRef<number>(YT_STATE.UNSTARTED);
   const adapter = useRef<MediaAdapter | null>(null);
   const [ready, setReady] = useState(false);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [captions, setCaptions] = useState(false);
+  useEffect(() => setCaptions(loadYouTubeCaptions()), []);
+  const searchOn = useRoom((s) => s.features.youtubeSearch);
   const [error, setError] = useState<string | null>(null);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -94,6 +102,7 @@ export function YouTubePlayer({ item, mode, onExpand }: { item: QueueItemDTO; mo
             fs: 0, // full screen is the whole room (cinema mode), so cameras stay visible
             rel: 0,
             playsinline: 1,
+            cc_load_policy: loadYouTubeCaptions() ? 1 : 0,
             iv_load_policy: 3,
             enablejsapi: 1,
             origin: window.location.origin,
@@ -107,6 +116,8 @@ export function YouTubePlayer({ item, mode, onExpand }: { item: QueueItemDTO; mo
               if (useRoom.getState().mediaMuted) e.target.mute();
               setDuration(e.target.getDuration() || 0);
               setReady(true);
+              // "Watch again" on the YouTube home.
+              rememberYouTube({ id: item.externalId!, title: item.title, channel: null, thumbnailUrl: item.thumbnailUrl ?? `https://i.ytimg.com/vi/${item.externalId}/hqdefault.jpg`, durationSec: e.target.getDuration() || item.durationSec || null });
             },
             onStateChange: (e) => {
               stateRef.current = e.data;
@@ -133,6 +144,31 @@ export function YouTubePlayer({ item, mode, onExpand }: { item: QueueItemDTO; mo
       player.current = null;
     };
   }, [item.externalId, item.id]);
+
+  // Chapters from the video's description (needs the YouTube API key on the server).
+  useEffect(() => {
+    setChapters([]);
+    if (!searchOn || !item.externalId) return;
+    let cancelled = false;
+    api<{ chapters: Chapter[] }>(`/api/rooms/${c.roomId}/youtube/chapters?v=${item.externalId}`)
+      .then((r) => !cancelled && setChapters(r.chapters))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [c.roomId, item.externalId, searchOn]);
+
+  // Captions are each person's own choice.
+  useEffect(() => {
+    const p = player.current;
+    if (!p || !ready) return;
+    try {
+      if (captions) p.loadModule?.("captions");
+      else p.unloadModule?.("captions");
+    } catch {
+      /* not supported by this player */
+    }
+  }, [captions, ready]);
 
   // Local volume only.
   useEffect(() => {
@@ -191,6 +227,25 @@ export function YouTubePlayer({ item, mode, onExpand }: { item: QueueItemDTO; mo
             rate={playback.rate}
             onRate={(r) => void sync.act({ type: "rate", rate: r })}
             disabled={!ready || !!error}
+            chapters={chapters}
+            extra={
+              <Tooltip label={captions ? "Turn subtitles off (just you)" : "Turn subtitles on (just you)"}>
+                <button
+                  onClick={() => {
+                    setCaptions((v) => {
+                      saveYouTubeCaptions(!v);
+                      return !v;
+                    });
+                  }}
+                  aria-pressed={captions}
+                  aria-label={captions ? "Turn subtitles off" : "Turn subtitles on"}
+                  className={cn("grid size-10 place-items-center rounded-full hover:bg-white/10", captions && "text-lamp")}
+                  data-testid="yt-captions"
+                >
+                  {captions ? <Captions className="size-5" /> : <CaptionsOff className="size-5" />}
+                </button>
+              </Tooltip>
+            }
           />
           {buffering && <span className="sr-only">Buffering</span>}
         </div>

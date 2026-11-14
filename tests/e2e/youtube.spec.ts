@@ -66,12 +66,14 @@ test.describe("YouTube together", () => {
 
     await host.page.getByTestId("ctl-youtube").click();
     const hub = host.page.getByTestId("youtube-hub");
-    await expect(hub.getByTestId("yt-results")).toContainText("Top video (all)");
+    // The top video is featured; the rest of the shelf is in the grid below.
+    await expect(hub.getByTestId("yt-hero")).toContainText("Top video (all)");
+    await expect(hub.getByTestId("yt-hero")).toContainText("123.5K views");
+    await expect(hub.getByTestId("yt-results")).toContainText("Second video (all)");
     await expect(hub.getByTestId("yt-results")).toContainText("2:00");
-    await expect(hub.getByTestId("yt-results")).toContainText("123.5K views");
 
     await hub.getByTestId("yt-cat-music").click();
-    await expect(hub.getByTestId("yt-results")).toContainText("Top video (10)");
+    await expect(hub.getByTestId("yt-hero")).toContainText("Top video (10)");
 
     await hub.getByTestId("yt-input").fill("lofi");
     await hub.getByTestId("yt-input").press("Enter");
@@ -97,5 +99,55 @@ test.describe("YouTube together", () => {
     const { host } = await pair(browser);
     await openWatch(host.page, "browser");
     await expect(host.page.getByText("The shared browser isn’t switched on yet")).toBeVisible();
+  });
+
+  test("YouTube home: a featured pick, whole playlists, and Watch again", async ({ browser }) => {
+    const { host, guest } = await pair(browser);
+    for (const p of [host.page, guest.page]) await fakeYouTube(p);
+
+    // The top trending video is featured big; playing it plays for both.
+    await host.page.getByTestId("ctl-youtube").click();
+    await expect(host.page.getByTestId("yt-hero")).toContainText("Top video (all)");
+    await host.page.getByTestId("yt-hero-play").click();
+    await expect(host.page.getByTestId("youtube-hub")).toBeHidden();
+    for (const p of [host.page, guest.page]) await expect(p.locator("[data-fake-youtube=trend000001]")).toBeAttached({ timeout: 15_000 });
+
+    // A playlist link adds every video to Up next, in order.
+    await host.page.getByTestId("ctl-youtube").click();
+    await host.page.getByTestId("yt-input").fill("https://www.youtube.com/playlist?list=PLroadtrip01");
+    await expect(host.page.getByRole("button", { name: /Add playlist/ })).toBeVisible();
+    await host.page.getByTestId("yt-input").press("Enter");
+    await expect(host.page.getByText("3 videos added to Up next")).toBeVisible();
+    const queue = await host.page.evaluate(() =>
+      (window as unknown as { __cbStore: { getState(): { queue: { externalId: string | null }[] } } }).__cbStore.getState().queue.map((q) => q.externalId),
+    );
+    expect(queue).toEqual(["trend000001", "plist000001", "plist000002", "plist000003"]);
+
+    // What you played shows up under Watch again (with the title YouTube reports for it).
+    await expect(host.page.getByTestId("yt-history")).toContainText("Test YouTube Video");
+  });
+
+  test("chapters jump for both, and subtitles are each person's own choice", async ({ browser }) => {
+    const { host, guest } = await pair(browser);
+    for (const p of [host.page, guest.page]) await fakeYouTube(p);
+    await openWatch(host.page, "youtube");
+    await host.page.getByTestId("yt-input").fill("https://youtu.be/chap0000001");
+    await host.page.getByTestId("yt-input").press("Enter");
+    for (const p of [host.page, guest.page]) await expect.poll(async () => (await videoState(p)).ready, { timeout: 15_000 }).toBeGreaterThanOrEqual(1);
+
+    // Chapter markers on the seek bar, and the current chapter next to the time.
+    await expect(host.page.getByTestId("chapter-marks").locator("span")).toHaveCount(2);
+    await expect(host.page.getByTestId("current-chapter")).toContainText("Intro");
+
+    // Jumping to a chapter moves both players there.
+    await host.page.getByTestId("chapters-button").click();
+    await host.page.getByTestId("chapter-item").filter({ hasText: "Finale" }).click();
+    for (const p of [host.page, guest.page]) await expect.poll(async () => (await videoState(p)).t, { timeout: 8000 }).toBeGreaterThan(79);
+    await expect(host.page.getByTestId("current-chapter")).toContainText("Finale");
+
+    // Subtitles: the guest's toggle doesn't touch the host's player.
+    await guest.page.getByTestId("yt-captions").click();
+    await expect(guest.page.locator("[data-fake-youtube]")).toHaveAttribute("data-captions", "on");
+    await expect(host.page.locator("[data-fake-youtube]")).not.toHaveAttribute("data-captions", "on");
   });
 });

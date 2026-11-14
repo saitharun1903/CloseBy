@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseYouTubeId, parseYouTubeStart } from "@/lib/youtube";
+import { parseChapters, parseYouTubeId, parseYouTubePlaylistId, parseYouTubeStart } from "@/lib/youtube";
 import { createYouTubeService } from "@/server/youtube";
 import { AppError } from "@/server/errors";
 
@@ -89,5 +89,37 @@ describe("YouTube browse", () => {
   it("reports quota exhaustion clearly", async () => {
     const f = (async () => new Response("{}", { status: 403 })) as unknown as typeof fetch;
     await expect(createYouTubeService("k", f).trending!("trending")).rejects.toThrow(/daily limit/);
+  });
+});
+
+describe("parseYouTubePlaylistId", () => {
+  it.each([
+    ["https://www.youtube.com/playlist?list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG", "PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG"],
+    ["https://youtube.com/watch?v=dQw4w9WgXcQ&list=PLabcdefghij", "PLabcdefghij"],
+    ["music.youtube.com/playlist?list=OLAK5uy_abcdefghij", "OLAK5uy_abcdefghij"],
+  ])("%s", (url, id) => expect(parseYouTubePlaylistId(url)).toBe(id));
+  it("ignores mixes, other sites and plain videos", () => {
+    expect(parseYouTubePlaylistId("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ")).toBeNull();
+    expect(parseYouTubePlaylistId("https://example.com/?list=PLabcdefghij")).toBeNull();
+    expect(parseYouTubePlaylistId("https://youtu.be/dQw4w9WgXcQ")).toBeNull();
+  });
+});
+
+describe("parseChapters", () => {
+  const desc = `Great video!\n\n0:00 Intro\n1:05 - The setup\n(12:30) Big reveal\n1:02:03 Credits\nThanks for watching`;
+  it("reads timestamped lines in YouTube's formats", () => {
+    expect(parseChapters(desc)).toEqual([
+      { start: 0, title: "Intro" },
+      { start: 65, title: "The setup" },
+      { start: 750, title: "Big reveal" },
+      { start: 3723, title: "Credits" },
+    ]);
+  });
+  it("follows YouTube's rules: starts at 0:00, at least three, ascending, within the video", () => {
+    expect(parseChapters("1:00 a\n2:00 b\n3:00 c")).toEqual([]);
+    expect(parseChapters("0:00 a\n2:00 b")).toEqual([]);
+    expect(parseChapters("0:00 a\n2:00 b\n1:00 back\n3:00 c").map((c) => c.title)).toEqual(["a", "b", "c"]);
+    expect(parseChapters(desc, 1000).map((c) => c.title)).toEqual(["Intro", "The setup", "Big reveal"]);
+    expect(parseChapters(null)).toEqual([]);
   });
 });

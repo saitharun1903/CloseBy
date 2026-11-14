@@ -14,6 +14,9 @@ export interface YTPlayer {
   unMute(): void;
   destroy(): void;
   getIframe(): HTMLIFrameElement;
+  /** Captions module (long-standing but lightly documented). */
+  loadModule?(name: "captions"): void;
+  unloadModule?(name: "captions"): void;
 }
 
 export const YT_STATE = { UNSTARTED: -1, ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5 } as const;

@@ -69,7 +69,7 @@ Both are optional; the app works without them and explains what's missing.
 1. console.cloud.google.com → create a project → **APIs & Services → Library → "YouTube Data API v3" → Enable**.
 2. **Credentials → Create credentials → API key**. Restrict it: *API restrictions → YouTube Data API v3*.
 3. Add it to Vercel as `YOUTUBE_API_KEY` and redeploy. Optional: `YOUTUBE_REGION` (default `IN`) picks the country for trending.
-   Quota (free, 10,000 units/day): a search costs ~101 units (≈ 100 searches/day); trending costs 1 unit per category and is cached for 15 minutes; playing videos costs nothing.
+   Quota (free, 10,000 units/day): a search costs ~101 units (≈ 100 searches/day); trending costs 1 unit per category and is cached for 15 minutes; a playlist costs 3 units; chapters cost 1 unit per video (cached 6 h); playing videos costs nothing.
 
 **Shared browser (Hyperbeam):**
 1. Sign up at hyperbeam.com and create an API key in the dashboard.

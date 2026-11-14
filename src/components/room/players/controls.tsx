@@ -1,6 +1,7 @@
 "use client";
-import { Gauge, Pause, Play, Volume1, Volume2, VolumeX } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Gauge, ListVideo, Pause, Play, Volume1, Volume2, VolumeX } from "lucide-react";
+import type { Chapter } from "@/lib/youtube";
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/cn";
@@ -33,6 +34,7 @@ export function PlayerControls({
   rate,
   disabled,
   extra,
+  chapters,
   className,
 }: {
   playing: boolean;
@@ -46,6 +48,8 @@ export function PlayerControls({
   rate: number;
   disabled?: boolean;
   extra?: React.ReactNode;
+  /** Optional chapters: markers on the seek bar, the current one by the time, and a menu. */
+  chapters?: Chapter[];
   className?: string;
 }) {
   const sync = useRoom((s) => s.sync);
@@ -54,8 +58,18 @@ export function PlayerControls({
   const partnerName = useRoom((s) => s.participants.find((p) => p.id !== s.me.id)?.displayName);
   const partnerNotReady = !!partnerMedia && !!partnerName && (partnerMedia.mediaId !== mediaId || !partnerMedia.ready);
   const shown = scrub ?? current;
+  const marks = chapters && chapters.length > 1 && duration > 0 ? chapters : null;
+  const currentChapter = marks ? [...marks].reverse().find((ch) => ch.start <= shown) : null;
   return (
     <div className={cn("text-white", className)}>
+      <div className="relative">
+      {marks && (
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 z-10 -mt-[3px] h-1.5" data-testid="chapter-marks">
+          {marks.slice(1).map((ch) => (
+            <span key={ch.start} className="absolute top-0 h-full w-[3px] -translate-x-1/2 bg-black/80" style={{ left: `${(ch.start / duration) * 100}%` }} />
+          ))}
+        </div>
+      )}
       <Slider
         aria-label="Seek"
         min={0}
@@ -70,6 +84,7 @@ export function PlayerControls({
         disabled={disabled}
         className="mb-1"
       />
+      </div>
       <div className="flex items-center gap-1 sm:gap-2">
         <Tooltip label={playing ? "Pause for both" : "Play for both"} shortcut="Space">
           <button
@@ -82,12 +97,18 @@ export function PlayerControls({
             {playing ? <Pause className="size-5 fill-current" /> : <Play className="size-5 fill-current" />}
           </button>
         </Tooltip>
-        <span className="font-mono text-[12px] text-white/90 tabular" data-testid="player-time">
+        <span className="shrink-0 font-mono text-[12px] text-white/90 tabular" data-testid="player-time">
           {formatTime(shown)} <span className="text-white/45">/ {formatTime(duration)}</span>
         </span>
+        {currentChapter && (
+          <span className="hidden min-w-0 max-w-[260px] truncate text-[12px] font-medium text-white/80 md:inline" data-testid="current-chapter">
+            · {currentChapter.title}
+          </span>
+        )}
         <SyncChip sync={sync} partnerNotReady={partnerNotReady} partnerName={partnerName} playing={playing} />
         <div className="ml-auto flex items-center gap-0.5">
           <VolumeControl />
+          {marks && <ChapterMenu chapters={marks} current={currentChapter ?? null} onSeek={onSeekCommit} />}
           <RateMenu rate={rate} onRate={onRate} />
           {extra}
         </div>
@@ -179,6 +200,36 @@ function RateMenu({ rate, onRate }: { rate: number; onRate: (r: number) => void 
           >
             {r}× {r === rate && <span aria-hidden>•</span>}
           </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Jump to a chapter — for both of you. */
+function ChapterMenu({ chapters, current, onSeek }: { chapters: Chapter[]; current: Chapter | null; onSeek: (t: number) => void }) {
+  return (
+    <Popover>
+      <Tooltip label="Chapters">
+        <PopoverTrigger asChild>
+          <button aria-label="Chapters" className="grid size-10 place-items-center rounded-full hover:bg-white/10" data-testid="chapters-button">
+            <ListVideo className="size-5" />
+          </button>
+        </PopoverTrigger>
+      </Tooltip>
+      <PopoverContent side="top" align="end" className="max-h-[50vh] w-72 overflow-y-auto p-1 scrollbar-quiet">
+        <p className="px-2 pb-1 pt-1.5 text-[11px] font-medium uppercase tracking-wider text-paper-faint">Chapters · jumps for both</p>
+        {chapters.map((ch) => (
+          <PopoverClose asChild key={ch.start}>
+            <button
+              onClick={() => onSeek(ch.start)}
+              className={cn("flex w-full items-baseline gap-3 rounded-md px-2 py-2 text-left text-[13px] hover:bg-white/10", current?.start === ch.start && "bg-white/[0.08] text-lamp")}
+              data-testid="chapter-item"
+            >
+              <span className="w-12 shrink-0 font-mono text-[12px] text-paper-faint">{formatTime(ch.start)}</span>
+              <span className="min-w-0 flex-1 leading-snug">{ch.title}</span>
+            </button>
+          </PopoverClose>
         ))}
       </PopoverContent>
     </Popover>

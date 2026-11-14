@@ -8,7 +8,7 @@ import { AppError } from "./errors";
 import type { BrowserProvider } from "./hyperbeam";
 import type { RealtimeGateway } from "./livekit";
 import type { YouTubeService } from "./youtube";
-import { parseYouTubeId } from "@/lib/youtube";
+import { parseYouTubeId, parseYouTubePlaylistId } from "@/lib/youtube";
 import type { BrowserStateDTO } from "@/lib/protocol";
 import type { SessionClaims } from "./session";
 
@@ -435,6 +435,59 @@ export async function addQueueItem(
   const items = await listQueue(d, roomId);
   await d.gateway.broadcast(roomId, { kind: "queue", items });
   return { item: toQueueDTO(item), items };
+}
+
+/**
+ * Add a whole YouTube playlist (up to 50 playable videos) to Up next in one go,
+ * keeping its order. Videos that can't be embedded are skipped.
+ */
+export async function addYouTubePlaylist(d: RoomDeps, claims: SessionClaims | null, roomId: string, url: string) {
+  const { me } = await authorize(d, claims, roomId);
+  const listId = parseYouTubePlaylistId(url);
+  if (!listId) throw new AppError("bad_request", "That doesn’t look like a YouTube playlist link.");
+  if (!d.youtube?.playlist) throw new AppError("media_unavailable", "Playlists need YouTube search to be switched on for this site.");
+  const { title, videos } = await d.youtube.playlist(listId);
+  if (!videos.length) throw new AppError("bad_request", "None of the videos in that playlist can be played outside YouTube.");
+  const added = await d.db.transaction(async (tx) => {
+    await tx.select({ id: rooms.id }).from(rooms).where(eq(rooms.id, roomId)).for("update");
+    const [{ count, maxKey }] = (await tx
+      .select({ count: sql<number>`count(*)::int`, maxKey: sql<number | null>`max(${queueItems.sortKey})` })
+      .from(queueItems)
+      .where(eq(queueItems.roomId, roomId))) as [{ count: number; maxKey: number | null }];
+    const room = MAX_QUEUE - count;
+    if (room <= 0) throw new AppError("bad_request", `The queue is limited to ${MAX_QUEUE} items.`);
+    const take = videos.slice(0, room);
+    return tx
+      .insert(queueItems)
+      .values(
+        take.map((v, i) => ({
+          roomId,
+          kind: "youtube" as const,
+          externalId: v.id,
+          url: `https://www.youtube.com/watch?v=${v.id}`,
+          title: v.title,
+          thumbnailUrl: v.thumbnailUrl,
+          durationSec: v.durationSec ?? null,
+          sortKey: (maxKey ?? 0) + 1 + i,
+          addedBy: me.id,
+        })),
+      )
+      .returning();
+  });
+  const items = await listQueue(d, roomId);
+  await d.gateway.broadcast(roomId, { kind: "queue", items });
+  const sorted = added.sort((a, b) => a.sortKey - b.sortKey).map(toQueueDTO);
+  return { playlistTitle: title, added: sorted, skipped: videos.length - sorted.length, items };
+}
+
+export async function youtubeChapters(d: RoomDeps, claims: SessionClaims | null, roomId: string, videoId: string) {
+  await authorize(d, claims, roomId);
+  if (!d.youtube?.chapters) return { chapters: [] };
+  try {
+    return { chapters: await d.youtube.chapters(videoId) };
+  } catch {
+    return { chapters: [] }; // chapters are a nicety; never fail playback over them
+  }
 }
 
 export async function removeQueueItem(d: RoomDeps, claims: SessionClaims | null, roomId: string, itemId: string) {

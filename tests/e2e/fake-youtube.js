@@ -37,6 +37,8 @@
     this.unMute = function () { v.muted = false; };
     this.destroy = function () { v.pause(); v.remove(); };
     this.getIframe = function () { return v; };
+    this.loadModule = function (m) { if (m === "captions") v.setAttribute("data-captions", "on"); };
+    this.unloadModule = function (m) { if (m === "captions") v.setAttribute("data-captions", "off"); };
   }
   window.YT = { Player: Player, PlayerState: S };
   setTimeout(function () { window.onYouTubeIframeAPIReady && window.onYouTubeIframeAPIReady(); }, 0);
