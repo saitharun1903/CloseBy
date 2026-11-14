@@ -1,0 +1,18 @@
+{
+  "name": "closeby-browser-host",
+  "private": true,
+  "type": "module",
+  "description": "Closeby's own shared browser: real Chromium per room, streamed into the room's LiveKit call.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types src/server.ts",
+    "test": "node --experimental-strip-types --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@livekit/rtc-node": "^0.13.35",
+    "livekit-server-sdk": "^2.19.3",
+    "playwright-core": "^1.65.1"
+  }
+}
